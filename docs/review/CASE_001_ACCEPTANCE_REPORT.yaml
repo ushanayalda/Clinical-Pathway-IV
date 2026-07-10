@@ -32,7 +32,6 @@ prototype_evidence:
     - keyboard focus remains meaningful after state changes
     - live status messages do not obstruct mobile controls
   visual_evidence:
-    - artifacts/screenshots/00-contact-sheet.png
     - artifacts/screenshots/01-home-desktop.png
     - artifacts/screenshots/02-library-desktop.png
     - artifacts/screenshots/03-station-desktop.png
