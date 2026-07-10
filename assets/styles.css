@@ -1264,6 +1264,10 @@ p {
   transform: translateY(0);
 }
 
+.status-message-inline {
+  display: none;
+}
+
 .noscript {
   margin: 30px;
   padding: 20px;
@@ -1686,6 +1690,16 @@ p {
 
   .status-message.is-visible {
     transform: none;
+  }
+
+  .status-message-inline {
+    display: block;
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    color: white;
+    background: var(--navy-deep);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
   }
 }
 
