@@ -40,14 +40,12 @@ const defaultState = () => ({
   confidence_before: null,
   confidence_after: null,
   reasoning_revealed: false,
-  actual_run_started_at: null,
-  actual_run_elapsed_seconds: null,
   actual_run_completed: false,
   transfer_responses: {},
   transfer_attempts: {},
   learning_step: 0,
   learning_view: "actual_run",
-  gold_step: 0,
+  learning_run_seen: false,
   guided_hint_visible: false,
   guided_model_visible: false,
   guided_retry_completed: false,
@@ -59,7 +57,6 @@ let libraryData;
 let stationData;
 let reviewData;
 let timerHandle;
-let practiceTimerHandle;
 let statusHandle;
 let stationFinishing = false;
 
@@ -227,8 +224,6 @@ function render({ focus = true, resetScroll = true, focusSelector = "#app-main",
   if (state.room === "review") main.innerHTML = renderReview();
   if (state.room === "journey") main.innerHTML = renderJourney();
 
-  syncPracticeTimer();
-
   if (focus) {
     requestAnimationFrame(() => {
       const target = document.querySelector(focusSelector) || main;
@@ -261,23 +256,9 @@ function roleMeta(step = {}) {
   return { role, label, instruction };
 }
 
-function syncPracticeTimer() {
-  clearInterval(practiceTimerHandle);
-  practiceTimerHandle = undefined;
-  if (!state.actual_run_started_at || state.actual_run_completed || state.room !== "review") return;
-  const update = () => {
-    const clock = document.querySelector("#model-run-clock");
-    if (!clock) return;
-    const elapsed = Math.floor((Date.now() - state.actual_run_started_at) / 1000);
-    clock.textContent = formatDuration(elapsed);
-  };
-  update();
-  practiceTimerHandle = setInterval(update, 1000);
-}
-
 function nextAction() {
   if (!state.station_started && !state.attempt_finished) {
-    return { label: "Choose how to start", room: "library", detail: "Learn from the Actual Run or practise without prompts." };
+    return { label: "Open Library", room: "library", detail: "Choose how you want to practise Station 001." };
   }
   if (state.station_started && !state.attempt_finished) {
     return { label: "Continue Station 001", room: "station", detail: "Your timed station is still open." };
@@ -286,7 +267,7 @@ function nextAction() {
     return { label: "Continue Review", room: "review", detail: "Work through each part, then choose what to practise." };
   }
   if (state.weak_segment && state.weak_segment !== "full_run" && !state.guided_retry_completed) {
-    return { label: "Practise one part", action: "start-guided", detail: "Use one Hint, say it aloud, then try the station again." };
+    return { label: "Practise one part", action: "start-guided", detail: "Use the Hints, say it aloud, then try the station again." };
   }
   return { label: "Run Station 001 again", action: "prepare-blind", detail: "Try the whole station again without the example." };
 }
@@ -298,42 +279,20 @@ function renderHome() {
 
   return `
     <section class="room" aria-labelledby="home-title">
-      <p class="eyebrow">Learn it. Say it. Practise it.</p>
-      <h1 id="home-title">Know what to do, then practise saying it.</h1>
-      <p class="lead">First, read a full safe example. Then practise without prompts and review one part at a time.</p>
+      <p class="eyebrow">Clinical Pathway</p>
+      <h1 id="home-title">Continue from one clear next step.</h1>
+      <p class="lead">Learn the station, practise it aloud, then focus only on what needs work.</p>
 
-      <div class="hero-grid">
-        <article class="panel">
-          <span class="status-pill">Station 001</span>
-          <h2>Chest discomfort after lunch</h2>
-          <p class="muted">Phase 1 · Dangerous chest pain · Patient consultation</p>
-          <div class="resume-line">
-            <span class="small muted">Your next step</span>
-            <strong>${escapeHtml(action.label)}</strong>
-            <span>${escapeHtml(action.detail)}</span>
-          </div>
-          <div class="action-row">
-            <button class="button" type="button" ${action.action ? `data-action="${escapeHtml(action.action)}"` : `data-room="${escapeHtml(action.room)}"`}>${escapeHtml(action.label)}</button>
-            <button class="button button--secondary" type="button" data-room="journey">Open Journey</button>
-          </div>
-        </article>
-
-        <aside class="panel panel--tint" aria-labelledby="rooms-title">
-          <h2 id="rooms-title">One station, five clear steps</h2>
-          <ol class="room-list">
-            <li><span class="room-number">1</span><span><strong>Home</strong><br><span class="small">See your next step.</span></span></li>
-            <li><span class="room-number">2</span><span><strong>Library</strong><br><span class="small">Choose the station.</span></span></li>
-            <li><span class="room-number">3</span><span><strong>Station</strong><br><span class="small">Practise aloud.</span></span></li>
-            <li><span class="room-number">4</span><span><strong>Review</strong><br><span class="small">See what to improve.</span></span></li>
-            <li><span class="room-number">5</span><span><strong>Journey</strong><br><span class="small">Choose what to practise next.</span></span></li>
-          </ol>
-        </aside>
-      </div>
-
-      <div class="journey-grid" style="margin-top: 22px">
-        <div class="panel panel--quiet"><span class="small muted">Attempt</span><br><strong>${attemptLabel}</strong></div>
-        <div class="panel panel--quiet"><span class="small muted">Review</span><br><strong>${reviewLabel}</strong></div>
-      </div>
+      <article class="panel panel--tint" style="max-width:760px">
+        <p class="eyebrow">Your next step</p>
+        <h2>${escapeHtml(action.label)}</h2>
+        <p>${escapeHtml(action.detail)}</p>
+        <p class="small muted">Attempt: ${attemptLabel} · Review: ${reviewLabel}</p>
+        <div class="action-row">
+          <button class="button" type="button" ${action.action ? `data-action="${escapeHtml(action.action)}"` : `data-room="${escapeHtml(action.room)}"`}>${escapeHtml(action.label)}</button>
+          <button class="button button--secondary" type="button" data-room="journey">Open Journey</button>
+        </div>
+      </article>
 
       <p class="small muted" style="margin-top: 28px">Clinical Pathway is for clinical exam practice. It does not replace clinical judgement, supervision, or local protocols.</p>
     </section>`;
@@ -405,7 +364,6 @@ function renderReadingScreen() {
             <button class="button" type="button" data-action="start-station">Start station</button>
             <button class="button button--secondary" type="button" data-room="library">Back to Library</button>
           </div>
-          <p class="small muted" style="margin-top:16px">The clock is running. The Actual Run and Review stay hidden until you finish the station.</p>
         </div>
       </article>
     </section>`;
@@ -441,6 +399,7 @@ function renderLiveStation() {
   const completionItems = stationCompletionItems();
   const readyToFinish = canFinishStation();
   const priorLog = state.encounter_log.slice(0, -1);
+  const missingItems = completionItems.filter((item) => !item.complete);
 
   return `
     <section class="room room--station" aria-labelledby="station-title">
@@ -472,27 +431,25 @@ function renderLiveStation() {
 
           ${state.plan_discussed ? `
             <div class="finish-gate">
-              <h2>Check these parts before you finish</h2>
-              <ul class="evidence-list">
-                ${completionItems.map((item) => `<li class="${item.complete ? "is-complete" : ""}"><span aria-hidden="true">${item.complete ? "✓" : "○"}</span>${escapeHtml(item.label)}</li>`).join("")}
-              </ul>
+              <h2>${readyToFinish ? "Ready to finish" : "Still needed"}</h2>
+              ${missingItems.length ? `<ul class="evidence-list">${missingItems.map((item) => `<li><span aria-hidden="true">○</span>${escapeHtml(item.label)}</li>`).join("")}</ul>` : `<p>You have opened the required parts.</p>`}
               <div class="action-row">
                 <button class="button" type="button" data-action="finish-station" ${readyToFinish ? "" : "disabled"}>${escapeHtml(stationData.finish_action.label)}</button>
               </div>
-              ${readyToFinish ? "" : `<p class="small muted">Complete the remaining parts above. This is only a checklist, not a score.</p>`}
             </div>` : ""}
         </div>
 
-        <aside class="encounter-panel" aria-labelledby="encounter-title">
-          <p class="eyebrow">Responses so far</p>
-          <h2 id="encounter-title">What David and the examiner have said</h2>
-          <ol class="encounter-log">
-            ${priorLog.length ? priorLog.map((item) => `
-              <li>
-                <span class="log-label">${escapeHtml(item.action_label)} · ${escapeHtml(item.speaker)}</span>
-                <span>${formatSpoken(item.response_text)}</span>
-              </li>`).join("") : `<li class="muted">Earlier responses will appear here.</li>`}
-          </ol>
+        <aside class="encounter-panel">
+          <details>
+            <summary><strong>Earlier responses</strong> <span class="small muted">${priorLog.length}</span></summary>
+            <ol class="encounter-log">
+              ${priorLog.length ? priorLog.map((item) => `
+                <li>
+                  <span class="log-label">${escapeHtml(item.action_label)} · ${escapeHtml(item.speaker)}</span>
+                  <span>${formatSpoken(item.response_text)}</span>
+                </li>`).join("") : `<li class="muted">No earlier responses yet.</li>`}
+            </ol>
+          </details>
         </aside>
       </div>
     </section>`;
@@ -535,41 +492,42 @@ function renderLearningMode() {
         </details>
         ${renderActualRunScript(steps)}
         <div class="action-row">
-          <button class="button" type="button" data-action="learning-open-map">See it step by step</button>
+          <button class="button" type="button" data-action="learning-open-map">See the 4 key turns</button>
           <button class="button button--secondary" type="button" data-action="prepare-blind">Start timed station</button>
           <button class="button button--quiet" type="button" data-room="library">Back to Library</button>
         </div>
       </section>`;
   }
 
-  const index = Math.min(state.learning_step, steps.length - 1);
-  const step = steps[index];
-  const meta = roleMeta(step);
-  const progress = Math.round(((index + 1) / steps.length) * 100);
+  const moments = stage.learning_moments || [];
+  const index = Math.min(state.learning_step, moments.length - 1);
+  const moment = moments[index];
+  const progress = Math.round(((index + 1) / moments.length) * 100);
 
   return `
     <section class="learning-shell" aria-labelledby="learning-title">
-      <p class="eyebrow">Step ${index + 1} of ${steps.length}</p>
-      <h1 id="learning-title" style="font-size:clamp(2rem,6vw,3.65rem)">See why each step happens.</h1>
-      <p class="lead">Read who speaks, say your part aloud, and notice why it matters.</p>
+      <p class="eyebrow">Key turn ${index + 1} of ${moments.length}</p>
+      <h1 id="learning-title" style="font-size:clamp(2rem,6vw,3.65rem)">Follow the change in risk.</h1>
+      <p class="lead">Each turn gives you a new reason to change what you do.</p>
       <div class="progress-line" aria-label="Learning progress: ${progress} percent"><span style="width:${progress}%"></span></div>
 
       <article class="learning-card" id="learning-step" tabindex="-1">
         <div class="learning-card__spoken">
-          <p class="role-label role-label--${escapeHtml(meta.role)}">${escapeHtml(meta.label)}</p>
-          <p class="role-instruction learning-instruction">${escapeHtml(meta.instruction)}</p>
-          <p class="spoken-line">${formatSpoken(step.spoken)}</p>
+          <p class="logic-label">What you notice</p>
+          <p class="spoken-line">${escapeHtml(moment.signal)}</p>
+          <p class="logic-label">What you do</p>
+          <p>${escapeHtml(moment.action)}</p>
         </div>
         <div class="learning-card__logic">
-          <p class="logic-label">Why this step matters</p>
-          <p class="logic-copy">${escapeHtml(step.road_map)}</p>
+          <p class="logic-label">Why</p>
+          <p class="logic-copy">${escapeHtml(moment.reason)}</p>
         </div>
       </article>
 
       <div class="action-row">
         <button class="button button--secondary" type="button" data-action="learning-prev" ${index === 0 ? "disabled" : ""}>Previous step</button>
-        ${index < steps.length - 1
-          ? `<button class="button" type="button" data-action="learning-next">Next step</button>`
+        ${index < moments.length - 1
+          ? `<button class="button" type="button" data-action="learning-next">Next key turn</button>`
           : `<button class="button" type="button" data-action="prepare-blind">Start timed station</button>`}
         <button class="button button--quiet" type="button" data-action="learning-show-run">Back to Actual Run</button>
       </div>
@@ -604,41 +562,34 @@ function latestAttempt() {
 function renderAttemptEvidence() {
   const attempt = latestAttempt();
   if (!attempt) return "";
+  const missing = [];
+  if (!attempt.revealed_ids?.includes("pain_story")) missing.push("focused pain questions");
+  if (!attempt.revealed_ids?.includes("associated_symptoms")) missing.push("warning symptoms");
+  if (!attempt.examiner_findings_requested) missing.push("examiner findings");
+  if (!attempt.pushback_opened) missing.push("David's concern about driving");
   return `
-    <details class="attempt-evidence panel panel--quiet" data-attempt-evidence ${state.review_stage === 0 ? "open" : ""}>
-      <summary><strong>What you completed</strong> <span class="small muted">Checklist only</span></summary>
+    <section class="attempt-evidence panel panel--quiet" data-attempt-evidence aria-labelledby="attempt-evidence-title">
+      <h3 id="attempt-evidence-title">What the site recorded</h3>
       <div class="evidence-metrics">
         <div><span>Time used</span><strong>${escapeHtml(formatDuration(attempt.elapsed_seconds))}</strong></div>
-        <div><span>Topics opened</span><strong>${attempt.revealed_count} of ${attempt.available_reveals}</strong></div>
-        <div><span>Examiner findings</span><strong>${attempt.examiner_findings_requested ? "Requested" : "Not requested"}</strong></div>
-        <div><span>David\'s concern</span><strong>${attempt.pushback_opened ? "Opened" : "Not opened"}</strong></div>
-        <div><span>How it ended</span><strong>${attempt.timed_out ? "Time finished" : "You finished"}</strong></div>
+        <div><span>Responses opened</span><strong>${attempt.revealed_count} of ${attempt.available_reveals}</strong></div>
+        <div><span>Required parts</span><strong>${missing.length ? `Missing ${missing.length}` : "Opened"}</strong></div>
       </div>
-    </details>`;
+      ${missing.length ? `<p class="small"><strong>Focus next:</strong> ${escapeHtml(missing.join(", "))}.</p>` : `<p class="small">You opened the required patient and examiner responses.</p>`}
+    </section>`;
 }
 
 function reviewRequirements() {
-  const drills = reviewData?.stages.find((stage) => stage.id === "what_if_paths")?.transfer_drills || [];
+  const drills = visibleTransferDrills();
   return [
-    { id: "self_check", label: "Self-check and starting confidence chosen", complete: state.self_check_confirmed && Boolean(state.confidence_before) },
+    { id: "self_check", label: "Attempt reviewed", complete: state.self_check_confirmed && Boolean(state.confidence_before) },
     { id: "safety_mirror", label: "Safety check completed", complete: Boolean(state.safety_mirror) },
     { id: "reasoning", label: "Plan change reviewed", complete: state.reasoning_revealed },
-    { id: "actual_run", label: "Actual Run practised from start to finish", complete: state.actual_run_completed },
-    { id: "transfer", label: `Changed-detail questions completed (${Object.values(state.transfer_responses).filter(Boolean).length} of ${drills.length})`, complete: drills.length > 0 && drills.every((drill) => state.transfer_responses[drill.id] === drill.correct_choice_id) },
+    { id: "actual_run", label: "Actual Run checked", complete: state.actual_run_completed },
+    { id: "transfer", label: `Changed-detail questions completed`, complete: drills.length > 0 && drills.every((drill) => state.transfer_responses[drill.id] === drill.correct_choice_id) },
     { id: "weak_turn", label: "One practice area selected", complete: Boolean(state.weak_segment) },
     { id: "confidence", label: "Final confidence chosen", complete: Boolean(state.confidence_after) }
   ];
-}
-
-function renderMasteryGate() {
-  const requirements = reviewRequirements();
-  return `
-    <div class="mastery-gate">
-      <h3>Before you finish Review</h3>
-      <ul class="evidence-list">
-        ${requirements.map((item) => `<li class="${item.complete ? "is-complete" : ""}"><span aria-hidden="true">${item.complete ? "✓" : "○"}</span>${escapeHtml(item.label)}</li>`).join("")}
-      </ul>
-    </div>`;
 }
 
 function renderReview() {
@@ -651,9 +602,8 @@ function renderReview() {
   return `
     <section class="room" aria-labelledby="review-title">
       <p class="eyebrow">Review · Stage ${index + 1} of ${reviewData.stages.length}</p>
-      <h1 id="review-title" style="font-size:clamp(2.1rem,6vw,3.8rem)">Review one part at a time.</h1>
-      <p class="lead">Compare what you did with the Actual Run. Then choose one part to practise.</p>
-      ${renderAttemptEvidence()}
+      <h1 id="review-title" style="font-size:clamp(2.1rem,6vw,3.8rem)">${index === 0 ? "Review one useful part at a time." : escapeHtml(stage.title)}</h1>
+      ${index === 0 ? `<p class="lead">Each stage adds a new job: compare, understand, adapt, then practise.</p>` : ""}
 
       <div class="review-grid">
         <nav class="review-stage-nav" aria-label="Review stages">
@@ -662,7 +612,7 @@ function renderReview() {
               ${itemIndex + 1}. ${escapeHtml(item.short_label)}
             </button>`).join("")}
         </nav>
-        <article class="review-stage" id="review-stage-panel" tabindex="-1" aria-labelledby="review-stage-title">
+        <article class="review-stage" id="review-stage-panel" tabindex="-1" aria-labelledby="${index === 0 ? "review-stage-title" : "review-title"}">
           ${renderReviewStage(stage)}
           ${renderReviewControls(stage, index)}
         </article>
@@ -679,27 +629,21 @@ function renderReviewControls(stage, index) {
         <button class="button" type="button" data-room="journey">Open Journey</button>
       </div>`;
   }
+  if (stage.id === "try_again") {
+    return `<div class="action-row review-actions"><button class="button button--secondary" type="button" data-action="review-prev">Back</button></div>`;
+  }
+
   let primaryAction = "review-next";
   let primaryLabel = finalStage ? "Complete Review" : "Continue";
 
-  if (stage.id === "safe_version" && !state.actual_run_started_at) {
-    primaryAction = "actual-run-start";
-    primaryLabel = "Start full spoken practice";
-  } else if (stage.id === "safe_version" && !state.actual_run_completed) {
-    primaryAction = "actual-run-finish";
-    primaryLabel = "Finish full spoken practice";
-  } else if (stage.id === "safe_version" && state.gold_step < stage.gold_run.length - 1) {
-    primaryLabel = "Next part";
-  } else if (stage.id === "safe_version") {
-    primaryLabel = "Continue to common mistakes";
-  } else if (stage.id === "what_changed" && !state.reasoning_revealed) {
+  if (stage.id === "what_changed" && !state.reasoning_revealed) {
     primaryAction = "reveal-reasoning";
     primaryLabel = "Show why the plan changed";
   }
 
   return `
     <div class="action-row review-actions">
-      <button class="button button--secondary" type="button" data-action="review-prev" ${index === 0 && !(stage.id === "safe_version" && state.actual_run_completed && state.gold_step > 0) ? "disabled" : ""}>Back</button>
+      <button class="button button--secondary" type="button" data-action="review-prev" ${index === 0 ? "disabled" : ""}>Back</button>
       <button class="button" type="button" data-action="${primaryAction}">${primaryLabel}</button>
     </div>`;
 }
@@ -717,30 +661,25 @@ function renderReviewLocked() {
 }
 
 function renderReviewStage(stage) {
+  const stageHeading = state.review_stage === 0 ? `<h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>` : "";
   if (stage.id === "self_check") {
     const confidenceStage = reviewData.stages.find((item) => item.id === "confidence_after_review");
     return `
-      <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
+      ${stageHeading}
       <p>${escapeHtml(stage.intro)}</p>
-      <div class="check-list">
-        ${stage.items.map((item) => `
-          <label class="check-item">
-            <input type="checkbox" data-self-check="${escapeHtml(item.id)}" ${state.self_check.includes(item.id) ? "checked" : ""}>
-            <span>${escapeHtml(item.label)}</span>
-          </label>`).join("")}
-      </div>
+      ${renderAttemptEvidence()}
       <div class="confidence-before">
-        <h3>Before seeing the Actual Run, how ready did you feel?</h3>
+        <h3>How did the station feel?</h3>
         <div class="confidence-scale" aria-label="Confidence before Review">
           ${confidenceStage.levels.map((level) => `<button type="button" data-action="confidence-before" data-confidence="${level.value}" aria-pressed="${state.confidence_before === level.value}">${level.value}</button>`).join("")}
         </div>
-        ${state.confidence_before ? `<p class="small muted">Selected: ${state.confidence_before} of 5</p>` : `<p class="small muted">Choose 1 to 5. This helps compare before and after. It is not a score.</p>`}
+        <div class="confidence-key small muted"><span>1 · Needed the example</span><span>2 · Knew the danger, lost some order</span><span>3 · Could run it independently</span></div>
       </div>`;
   }
 
   if (stage.id === "safety_mirror") {
     return `
-      <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
+      ${stageHeading}
       <p>${escapeHtml(stage.intro)}</p>
       <div class="choice-list">
         ${stage.options.map((option) => `
@@ -758,13 +697,13 @@ function renderReviewStage(stage) {
       "What should happen now?"
     ];
     return `
-      <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
+      ${stageHeading}
       <p>${escapeHtml(stage.intro)}</p>
       ${!state.reasoning_revealed ? `
         <div class="retrieval-prompt">
           <p class="eyebrow">Think before you look</p>
           <ol>${prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}</ol>
-          <p class="small muted">Answer aloud, then show the explanation. There is no score.</p>
+          <p class="small muted">Answer aloud, then check your reasoning.</p>
         </div>` : `
         <ol class="logic-list">
           ${stage.logic_moments.map((item) => `
@@ -774,34 +713,39 @@ function renderReviewStage(stage) {
               <p>${escapeHtml(item.road_map)}</p>
             </li>`).join("")}
         </ol>
-        <div class="selected-retry">
-          <strong>If you first thought it was indigestion</strong>
+        <details class="selected-retry">
+          <summary><strong>If you first thought it was indigestion</strong></summary>
           <p>${escapeHtml(stage.recovery_sentence)}</p>
-        </div>`}`;
+        </details>`}`;
   }
 
   if (stage.id === "safe_version") return renderGoldRun(stage);
 
   if (stage.id === "thinking_traps") {
+    const attempt = latestAttempt();
+    const trap = !attempt?.plan_discussed || attempt?.timed_out
+      ? stage.traps[1]
+      : !attempt?.pushback_opened
+        ? stage.traps[2]
+        : stage.traps[0];
     return `
-      <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
+      ${stageHeading}
       <ul class="trap-list">
-        ${stage.traps.map((trap) => `
-          <li class="trap-item">
-            <h3>${escapeHtml(trap.label)}</h3>
-            <p class="muted"><strong>What can happen:</strong> ${escapeHtml(trap.drift)}</p>
-            <p class="trap-reset"><strong>Do this instead:</strong> ${escapeHtml(trap.reset)}</p>
-          </li>`).join("")}
+        <li class="trap-item">
+          <h3>${escapeHtml(trap.label)}</h3>
+          <p class="muted"><strong>What can happen:</strong> ${escapeHtml(trap.drift)}</p>
+          <p class="trap-reset"><strong>Do this instead:</strong> ${escapeHtml(trap.reset)}</p>
+        </li>
       </ul>`;
   }
 
   if (stage.id === "what_if_paths") {
-    const drills = stage.transfer_drills || [];
+    const drills = visibleTransferDrills();
     return `
-      <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
+      ${stageHeading}
       <p>${escapeHtml(stage.intro || "Apply the safety rule before reading an explanation.")}</p>
       ${drills.length ? `<div class="transfer-list">
-        ${drills.map((drill, index) => renderTransferDrill(drill, index)).join("")}
+        ${drills.map((drill, index) => renderTransferDrill(drill, index, drills.length)).join("")}
       </div>` : `<ul class="what-if-list">
           ${stage.paths.map((path) => `<li class="what-if-item"><h3>${escapeHtml(path.question)}</h3><p class="what-if-answer">${escapeHtml(path.answer)}</p></li>`).join("")}
         </ul>`}`;
@@ -811,7 +755,7 @@ function renderReviewStage(stage) {
 
   if (stage.id === "confidence_after_review") {
     return `
-      <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
+      ${stageHeading}
       <p>${escapeHtml(stage.intro)}</p>
       <div class="confidence-list">
         ${stage.levels.map((level) => `
@@ -819,20 +763,28 @@ function renderReviewStage(stage) {
             <strong>${level.value}</strong><span>${escapeHtml(level.label)}</span>
           </button>`).join("")}
       </div>
-      ${state.confidence_after ? `<div class="selected-retry"><strong>Now check what is left below.</strong></div>` : ""}
-      ${renderMasteryGate()}`;
+      ${state.confidence_after ? `<div class="selected-retry"><strong>Ready to save this Review.</strong></div>` : ""}`;
   }
 
   return "";
 }
 
-function renderTransferDrill(drill, index) {
+function visibleTransferDrills() {
+  const drills = reviewData?.stages.find((stage) => stage.id === "what_if_paths")?.transfer_drills || [];
+  if (drills.length <= 2) return drills;
+  const fixed = drills.find((drill) => drill.id === "one_classic_clue_missing");
+  const rotating = drills.filter((drill) => drill.id !== "one_classic_clue_missing");
+  const attemptNumber = latestAttempt()?.number || 1;
+  return [fixed, rotating[(attemptNumber - 1) % rotating.length]].filter(Boolean);
+}
+
+function renderTransferDrill(drill, index, total) {
   const selected = state.transfer_responses[drill.id];
   const correct = selected === drill.correct_choice_id;
   const attempted = (state.transfer_attempts[drill.id] || []).length > 0;
   return `
     <article class="transfer-drill">
-      <p class="eyebrow">Change ${index + 1} of 3</p>
+      <p class="eyebrow">Change ${index + 1} of ${total}</p>
       <h3>${escapeHtml(drill.scenario)}</h3>
       <p>${escapeHtml(drill.prompt)}</p>
       <div class="choice-list">
@@ -846,71 +798,37 @@ function renderTransferDrill(drill, index) {
 }
 
 function renderGoldRun(stage) {
-  if (!state.actual_run_completed) {
-    const elapsed = state.actual_run_started_at ? Math.floor((Date.now() - state.actual_run_started_at) / 1000) : 0;
+  if (!state.learning_run_seen) {
     return `
-      <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
       <p>${escapeHtml(stage.intro)}</p>
       ${stage.completeness_note ? `<div class="clinical-hold-note"><strong>About this example</strong><p>${escapeHtml(stage.completeness_note)}</p></div>` : ""}
-      <div class="run-timer" aria-live="off">
-        <span>Full spoken practice</span>
-        <strong id="model-run-clock">${formatDuration(elapsed)}</strong>
-      </div>
-      <p class="small muted">Start the timer and continue without pausing. Say the parts marked You say, You ask the examiner, and You hand over.</p>
       ${renderActualRunScript(stage.gold_run)}
-      ${stage.portable_station_spine ? renderStationSpine(stage.portable_station_spine) : ""}`;
+      <details class="station-spine panel panel--quiet">
+        <summary><strong>Need a shorter order?</strong></summary>
+        ${stage.portable_station_spine ? `<ol>${stage.portable_station_spine.map((item) => `<li>${escapeHtml(item.label)}</li>`).join("")}</ol>` : ""}
+      </details>`;
   }
 
-  const index = Math.min(state.gold_step, stage.gold_run.length - 1);
-  const step = stage.gold_run[index];
-  const meta = roleMeta(step);
   return `
-    <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
-    <p>You completed the full run in ${formatDuration(state.actual_run_elapsed_seconds)}. Now review one part at a time.</p>
-    <div class="progress-line" aria-label="Model sequence step ${index + 1} of ${stage.gold_run.length}"><span style="width:${Math.round(((index + 1) / stage.gold_run.length) * 100)}%"></span></div>
-    <article class="learning-card panel--quiet">
-      <div class="learning-card__spoken">
-        <p class="role-label role-label--${escapeHtml(meta.role)}">${escapeHtml(meta.label)} · Turn ${index + 1}</p>
-        <p class="role-instruction learning-instruction">${escapeHtml(meta.instruction)}</p>
-        <p class="spoken-line">${formatSpoken(step.spoken)}</p>
-      </div>
-      <div class="learning-card__logic">
-        <p class="logic-label">Why this step matters</p>
-        <p class="logic-copy">${escapeHtml(step.road_map)}</p>
-      </div>
-    </article>`;
-}
-
-function renderStationSpine(items) {
-  return `
-    <details class="station-spine panel panel--quiet">
-      <summary><strong>Quick station order</strong></summary>
-      <ol>${items.map((item) => `<li>${escapeHtml(typeof item === "string" ? item : item.label || item.step)}</li>`).join("")}</ol>
+    <div class="selected-retry">
+      <strong>You already studied the full run.</strong>
+      <p>Skip the repeated script. Open it only if you need the exact wording.</p>
+    </div>
+    <details class="panel panel--quiet">
+      <summary><strong>Show the Actual Run again</strong></summary>
+      ${renderActualRunScript(stage.gold_run)}
     </details>`;
 }
 
 function renderTryAgain(stage) {
-  const selected = stage.retry_options.find((option) => option.id === state.weak_segment);
   return `
-    <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
     <p>${escapeHtml(stage.intro)}</p>
-    <details class="practice-ladder panel panel--quiet">
-      <summary><strong>Practice steps</strong></summary>
-      <ol>${stage.practice_ladder.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>
-    </details>
     <div class="retry-list">
       ${stage.retry_options.map((option) => `
         <button class="retry-choice" type="button" data-action="retry-choice" data-retry-id="${escapeHtml(option.id)}" aria-pressed="${state.weak_segment === option.id}">
           <strong>${escapeHtml(option.label)}</strong>
-          <span>${escapeHtml(option.practice_task)}</span>
         </button>`).join("")}
-    </div>
-    ${selected ? `
-      <div class="selected-retry">
-        <strong>Selected: ${escapeHtml(selected.label)}</strong>
-        <p>${escapeHtml(selected.practice_task)}</p>
-        <button class="button" type="button" data-action="start-guided">Practise this part</button>
-      </div>` : ""}`;
+    </div>`;
 }
 
 function renderGuidedRetry() {
@@ -927,18 +845,18 @@ function renderGuidedRetry() {
         <p class="lead">${escapeHtml(option.practice_task)}</p>
         ${state.guided_hint_visible ? `
           <div class="hint-box" tabindex="-1">
-            <p class="eyebrow">Hint</p>
+            <p class="eyebrow">Hints</p>
             <p>${escapeHtml(option.hint)}</p>
           </div>` : `
-          <div class="action-row"><button class="button button--secondary" type="button" data-action="show-hint">Show one Hint</button></div>`}
+          <div class="action-row"><button class="button button--secondary" type="button" data-action="show-hint">Show Hints</button></div>`}
         ${state.guided_model_visible ? `
           <div class="model-line" tabindex="-1"><strong>Example wording</strong><br>${escapeHtml(option.model_line)}</div>` : `
           <div class="action-row"><button class="button button--quiet" type="button" data-action="show-model">Show example wording</button></div>`}
       </article>
       <div class="action-row">
         ${!state.guided_retry_completed
-          ? `<button class="button" type="button" data-action="complete-guided">I practised this part</button>`
-          : `<button class="button" type="button" data-action="prepare-blind">Start timed station</button>`}
+          ? `<button class="button" type="button" data-action="complete-guided">Done practising</button>`
+          : `<button class="button" type="button" data-room="review">Return to Review</button>`}
         <button class="button button--secondary" type="button" data-room="review">Back to Review</button>
       </div>
     </section>`;
@@ -949,10 +867,10 @@ function journeyRecommendation() {
   if (state.station_started && !state.attempt_finished) return { title: "Continue the timed station", detail: "Finish the station before opening Review.", cadence: "Now", room: "station" };
   if (!state.attempt_finished) return { title: "Try the station without prompts", detail: "Complete Station 001 before opening Review.", cadence: "Now", action: "prepare-blind" };
   if (state.review_status !== "completed") return { title: "Finish Review", detail: "Complete each part in order, then choose what to practise.", cadence: "Now", room: "review" };
-  if (state.weak_segment && state.weak_segment !== "full_run" && !state.guided_retry_completed) return { title: "Practise the part you selected", button_label: "Practise this part", detail: "Use one Hint, say it aloud, then try the station again.", cadence: "Today", action: "start-guided" };
+  if (state.weak_segment && !state.guided_retry_completed) return { title: "Practise the part you selected", button_label: "Practise this part", detail: "Use the Hints, say it aloud, then try the station again.", cadence: "Today", action: "start-guided" };
   if (state.attempt_history.length < 2) return { title: "Try a second timed station", detail: "Practise the selected part, then repeat the whole station without the example.", cadence: "Today", action: "prepare-blind" };
   if (!attempt?.examiner_findings_requested || !attempt?.pushback_opened || attempt.elapsed_seconds < MIN_FULL_SPOKEN_RUN_SECONDS) return { title: "Repeat the whole station aloud", detail: "The last station was short or did not include examiner findings and David's concern.", cadence: "Today", action: "prepare-blind" };
-  if ((state.confidence_after || 0) < 4 || state.safety_mirror !== "likely_safe") return { title: "Practise one part again", detail: "Your self-check shows that one more practice would help.", cadence: "Next day", action: state.weak_segment && state.weak_segment !== "full_run" ? "start-guided" : "prepare-blind" };
+  if ((state.confidence_after || 0) < 3 || state.safety_mirror !== "likely_safe") return { title: "Practise one part again", detail: "One more focused practice will help before the next full run.", cadence: "Next day", action: state.weak_segment ? "start-guided" : "prepare-blind" };
   return { title: "Practise again in one week", detail: "Repeat the station without the example, then compare what you completed.", cadence: "One week", action: "prepare-blind" };
 }
 
@@ -969,15 +887,11 @@ function renderJourney() {
     ["Review", reviewDone ? "Completed" : state.review_unlocked ? "Ready" : "Not ready"],
     ["Next", recommendation.cadence]
   ];
-  const selectedPractice = reviewData?.stages.find((item) => item.id === "try_again")?.retry_options.find((item) => item.id === state.weak_segment);
-  const weakLabel = selectedPractice?.label || "Not selected";
-  const confidenceChange = state.confidence_before && state.confidence_after ? state.confidence_after - state.confidence_before : null;
-
   return `
     <section class="room" aria-labelledby="journey-title">
       <p class="eyebrow">Journey</p>
       <h1 id="journey-title">See what you have done. Choose what to practise next.</h1>
-      <p class="lead">This page keeps your station results, Review choices, and next practice.</p>
+      <p class="lead">Use the next action. Open past attempts only when you need them.</p>
 
       <div class="journey-path" aria-label="Current pathway">
         ${nodes.map((node, index) => `
@@ -987,7 +901,7 @@ function renderJourney() {
           </div>`).join("")}
       </div>
 
-      <div class="journey-grid">
+      <div class="journey-grid" style="grid-template-columns:minmax(0,1fr)">
         <article class="journey-card">
           <p class="eyebrow">Next step · ${escapeHtml(recommendation.cadence)}</p>
           <h2>${escapeHtml(recommendation.title)}</h2>
@@ -996,21 +910,10 @@ function renderJourney() {
             <button class="button" type="button" ${recommendation.action ? `data-action="${escapeHtml(recommendation.action)}"` : `data-room="${escapeHtml(recommendation.room)}"`}>${escapeHtml(recommendation.button_label || recommendation.title)}</button>
           </div>
         </article>
-
-        <article class="journey-card">
-          <h2>Your practice so far</h2>
-          <div class="metric"><span>Station</span><strong>${attemptDone ? "Finished" : state.station_started ? "In progress" : "Not started"}</strong></div>
-          <div class="metric"><span>Review</span><strong>${reviewDone ? "Completed" : state.review_unlocked ? "Ready" : "Not ready"}</strong></div>
-          <div class="metric"><span>Practice area</span><strong>${escapeHtml(weakLabel)}</strong></div>
-          <div class="metric"><span>Confidence before Review</span><strong>${state.confidence_before ? `${state.confidence_before} of 5` : "Not chosen"}</strong></div>
-          <div class="metric"><span>Confidence after Review</span><strong>${state.confidence_after ? `${state.confidence_after} of 5` : "Not chosen"}</strong></div>
-          <div class="metric"><span>Confidence change</span><strong>${confidenceChange === null ? "Not available" : `${confidenceChange >= 0 ? "+" : ""}${confidenceChange}`}</strong></div>
-        </article>
       </div>
 
-      <section class="attempt-history" data-attempt-history aria-labelledby="attempt-history-title">
-        <h2 id="attempt-history-title">Your station attempts</h2>
-        <p class="muted">This shows what you opened and how long you practised. It does not score your clinical skill.</p>
+      <details class="attempt-history" data-attempt-history>
+        <summary><strong>Past station attempts</strong> <span class="small muted">${state.attempt_history.length}</span></summary>
         <div class="attempt-records">
           ${state.attempt_history.length ? state.attempt_history.slice().reverse().map((attempt) => `
             <article class="attempt-record" data-attempt-record>
@@ -1022,7 +925,7 @@ function renderJourney() {
               <span>${attempt.timed_out ? "Time finished" : "You finished"}</span>
             </article>`).join("") : `<p>No timed station completed yet.</p>`}
         </div>
-      </section>
+      </details>
 
       <div class="action-row">
         ${state.review_unlocked ? `<button class="button button--secondary" type="button" data-room="review">Return to Review</button>` : ""}
@@ -1065,12 +968,9 @@ function resetAttemptForBlind() {
     confidence_before: null,
     confidence_after: null,
     reasoning_revealed: false,
-    actual_run_started_at: null,
-    actual_run_elapsed_seconds: null,
     actual_run_completed: false,
     transfer_responses: {},
     transfer_attempts: {},
-    gold_step: 0,
     guided_hint_visible: false,
     guided_model_visible: false
   };
@@ -1083,6 +983,7 @@ async function startLearning() {
   state.mode = "learning_mode";
   state.learning_step = 0;
   state.learning_view = "actual_run";
+  state.learning_run_seen = true;
   saveState();
   setRoom("station");
 }
@@ -1135,7 +1036,7 @@ function markPlanDiscussed() {
   });
   saveState();
   render({ focus: true, resetScroll: false, focusSelector: ".ask-panel", scrollTarget: ".ask-panel" });
-  announce("David's response to your plan is now available.");
+  announce("David's response is ready.");
 }
 
 async function finishStation(reason = "manual") {
@@ -1194,6 +1095,7 @@ async function startGuidedRetry() {
   state.mode = "guided_retry";
   state.guided_hint_visible = false;
   state.guided_model_visible = false;
+  state.guided_retry_completed = false;
   saveState();
   setRoom("station");
 }
@@ -1201,9 +1103,13 @@ async function startGuidedRetry() {
 function completeGuidedRetry() {
   state.guided_retry_completed = true;
   state.guided_retry_count += 1;
+  markReviewStageComplete("try_again");
+  state.mode = "review_mode";
+  state.review_stage = reviewData.stages.length - 1;
+  state.review_max_stage = Math.max(state.review_max_stage, state.review_stage);
   saveState();
-  render({ focus: true, resetScroll: false, focusSelector: "[data-action='prepare-blind']" });
-  announce("You practised this part. Now try the timed station.");
+  setRoom("review");
+  announce("Practice saved. Choose how ready you feel now.");
 }
 
 function markReviewStageComplete(id) {
@@ -1211,17 +1117,15 @@ function markReviewStageComplete(id) {
 }
 
 function allTransferDrillsComplete() {
-  const stage = reviewData.stages.find((item) => item.id === "what_if_paths");
-  const drills = stage.transfer_drills || [];
+  const drills = visibleTransferDrills();
   return drills.length > 0 && drills.every((drill) => state.transfer_responses[drill.id] === drill.correct_choice_id);
 }
 
 function stageAdvanceBlock(stage) {
-  if (stage.id === "self_check" && !state.confidence_before) return "Choose how ready you felt before seeing the Actual Run.";
+  if (stage.id === "self_check" && !state.confidence_before) return "Choose how the station felt.";
   if (stage.id === "safety_mirror" && !state.safety_mirror) return "Choose the safety statement that best matches what you did.";
   if (stage.id === "what_changed" && !state.reasoning_revealed) return "Answer the questions aloud, then show why the plan changed.";
-  if (stage.id === "safe_version" && !state.actual_run_completed) return "Practise the Actual Run from start to finish first.";
-  if (stage.id === "what_if_paths" && !allTransferDrillsComplete()) return "Answer all three changed-detail questions before continuing.";
+  if (stage.id === "what_if_paths" && !allTransferDrillsComplete()) return "Answer both changed-detail questions before continuing.";
   if (stage.id === "try_again" && !state.weak_segment) return "Choose one part to practise.";
   if (stage.id === "confidence_after_review" && !state.confidence_after) return "Choose how ready you feel now.";
   return null;
@@ -1250,7 +1154,6 @@ function completeReview() {
       weak_segment: state.weak_segment,
       confidence_before: state.confidence_before,
       confidence_after: state.confidence_after,
-      actual_run_elapsed_seconds: state.actual_run_elapsed_seconds,
       transfer_attempts: { ...state.transfer_attempts }
     }];
   }
@@ -1263,13 +1166,6 @@ function advanceReview() {
   const index = Math.min(state.review_stage, reviewData.stages.length - 1);
   const stage = reviewData.stages[index];
 
-  if (stage.id === "safe_version" && state.actual_run_completed && state.gold_step < stage.gold_run.length - 1) {
-    state.gold_step += 1;
-    saveState();
-    render({ focus: true, resetScroll: false, focusSelector: "#review-stage-panel", scrollTarget: "#review-stage-panel" });
-    return;
-  }
-
   const blocked = stageAdvanceBlock(stage);
   if (blocked) {
     announce(blocked);
@@ -1277,6 +1173,10 @@ function advanceReview() {
   }
 
   if (stage.id === "self_check") state.self_check_confirmed = true;
+  if (stage.id === "safe_version") {
+    state.actual_run_completed = true;
+    state.learning_run_seen = true;
+  }
   markReviewStageComplete(stage.id);
 
   if (index === reviewData.stages.length - 1) {
@@ -1291,33 +1191,9 @@ function advanceReview() {
 }
 
 function previousReviewTurn() {
-  const stage = reviewData.stages[state.review_stage];
-  if (stage?.id === "safe_version" && state.actual_run_completed && state.gold_step > 0) {
-    state.gold_step -= 1;
-  } else {
-    state.review_stage = Math.max(0, state.review_stage - 1);
-  }
+  state.review_stage = Math.max(0, state.review_stage - 1);
   saveState();
   render({ focus: true, resetScroll: false, focusSelector: "#review-stage-panel", scrollTarget: "#review-stage-panel" });
-}
-
-function startActualRun() {
-  state.actual_run_started_at = Date.now();
-  state.actual_run_elapsed_seconds = null;
-  state.actual_run_completed = false;
-  saveState();
-  render({ focus: true, resetScroll: false, focusSelector: "#review-stage-panel" });
-  announce("Full spoken practice started.");
-}
-
-function finishActualRun() {
-  if (!state.actual_run_started_at) return;
-  state.actual_run_elapsed_seconds = Math.max(1, Math.floor((Date.now() - state.actual_run_started_at) / 1000));
-  state.actual_run_completed = true;
-  state.gold_step = 0;
-  saveState();
-  render({ focus: true, resetScroll: false, focusSelector: "#review-stage-panel", scrollTarget: "#review-stage-panel" });
-  announce("Full spoken practice finished. Review each part next.");
 }
 
 function chooseTransfer(drillId, choiceId) {
@@ -1383,14 +1259,15 @@ main.addEventListener("click", async (event) => {
     state.reasoning_revealed = true;
     saveState();
     render({ focus: true, resetScroll: false, focusSelector: "#review-stage-panel", scrollTarget: "#review-stage-panel" });
-  } else if (action === "actual-run-start") startActualRun();
-  else if (action === "actual-run-finish") finishActualRun();
-  else if (action === "safety-choice") {
+  } else if (action === "safety-choice") {
     state.safety_mirror = actionButton.dataset.choice;
     saveState();
     render({ focus: true, resetScroll: false, focusSelector: `[data-choice='${CSS.escape(state.safety_mirror)}']` });
   } else if (action === "transfer-choice") chooseTransfer(actionButton.dataset.drillId, actionButton.dataset.choiceId);
-  else if (action === "retry-choice") selectWeakSegment(actionButton.dataset.retryId);
+  else if (action === "retry-choice") {
+    selectWeakSegment(actionButton.dataset.retryId);
+    await startGuidedRetry();
+  }
   else if (action === "start-guided") await startGuidedRetry();
   else if (action === "complete-guided") completeGuidedRetry();
   else if (action === "show-hint") {
@@ -1410,17 +1287,6 @@ main.addEventListener("click", async (event) => {
     saveState();
     render({ focus: true, resetScroll: false, focusSelector: `[data-action='confidence-choice'][data-confidence='${state.confidence_after}']` });
   }
-});
-
-main.addEventListener("change", (event) => {
-  const checkbox = event.target.closest("[data-self-check]");
-  if (!checkbox) return;
-  clearAnnouncement();
-  const id = checkbox.dataset.selfCheck;
-  state.self_check = checkbox.checked
-    ? [...new Set([...state.self_check, id])]
-    : state.self_check.filter((item) => item !== id);
-  saveState();
 });
 
 primaryNav.addEventListener("click", async (event) => {
