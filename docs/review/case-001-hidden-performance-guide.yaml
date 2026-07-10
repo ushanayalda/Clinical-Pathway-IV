@@ -1,0 +1,44 @@
+case_id: CP-C001
+status: draft_for_human_review
+station_contract: Emergency consultation
+primary_station_grammar: Patient Consultation with emergency escalation
+aims:
+  - Recognise a dangerous chest-pain pattern despite the patient's indigestion label.
+  - Escalate to urgent ambulance transfer before clinic proof.
+  - State that David must not drive.
+  - Continue focused assessment, observations, and handover while transfer proceeds.
+assessed_domains:
+  - danger_recognition
+  - focused_information_gathering
+  - dynamic_reasoning
+  - safe_decision_making
+  - patient_communication
+  - recovery_after_drift
+  - time_control
+expected_performance:
+  - Focused pain story and associated symptoms
+  - Relevant cardiovascular risk factors
+  - Clear uncertainty language without false reassurance
+  - Ambulance transfer without waiting for clinic blood tests or ECG proof
+  - Clear no-driving instruction
+  - Rest, observations, and concise handover
+key_issues:
+  - Reflux-like timing after lunch must not close the reasoning.
+  - Radiation, autonomic symptoms, exertional onset, persistence, and risk factors change the safe path.
+  - ECG may occur while transfer is underway but must not delay it.
+critical_errors:
+  - Treating the presentation as indigestion without emergency escalation
+  - Waiting for clinic tests before transfer
+  - Allowing private driving
+borderline_behaviours:
+  - Naming concern but using vague or delayed transport language
+  - Arranging transfer but failing to state no driving
+  - Asking a long history before acting on the dangerous pattern
+unsafe_behaviours:
+  - False reassurance
+  - Clinic observation as the endpoint
+  - Medication additions without source and clinical review
+examiner_commentary: >-
+  This prototype supports a strict self-review mirror only. It does not produce an official score,
+  automatic pass, or examiner judgement.
+clinical_review_status: hold

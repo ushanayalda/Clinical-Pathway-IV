@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#173b4d">
+    <meta name="description" content="Clinical Pathway station practice prototype">
+    <title>Clinical Pathway</title>
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#app-main">Skip to main content</a>
+
+    <header class="site-header" id="site-header">
+      <a class="brand" href="#home" aria-label="Clinical Pathway home">
+        <span class="brand-mark" aria-hidden="true">CP</span>
+        <span>Clinical Pathway</span>
+      </a>
+      <nav class="primary-nav" id="primary-nav" aria-label="Primary navigation">
+        <button type="button" data-room="home">Home</button>
+        <button type="button" data-room="library">Library</button>
+        <button type="button" data-room="review">Review</button>
+        <button type="button" data-room="journey">Journey</button>
+      </nav>
+    </header>
+
+    <div class="station-bar" id="station-bar" hidden>
+      <span class="station-bar__label">Station in progress</span>
+      <span id="station-clock" role="timer" aria-label="Station time remaining">08:00</span>
+    </div>
+
+    <main id="app-main" tabindex="-1"></main>
+
+    <div class="status-message" id="status-message" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <noscript>
+      <p class="noscript">Clinical Pathway needs JavaScript for station flow and hidden-content gates.</p>
+    </noscript>
+    <script type="module" src="assets/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,454 @@
+{
+  "case_id": "CP-C001",
+  "mode": "review_mode",
+  "unlock_rule": "attempt_finished",
+  "stage_order": [
+    "self_check",
+    "safety_mirror",
+    "what_changed",
+    "safe_version",
+    "thinking_traps",
+    "what_if_paths",
+    "try_again",
+    "confidence_after_review"
+  ],
+  "stages": [
+    {
+      "id": "self_check",
+      "short_label": "Self-check",
+      "title": "What did you cover?",
+      "intro": "Choose what you remember doing. This is your record, not an automatic score.",
+      "items": [
+        {"id": "focused_pain", "label": "I asked a focused pain story."},
+        {"id": "associated_risk", "label": "I checked the associated warning symptoms."},
+        {"id": "act_before_proof", "label": "I arranged urgent transfer before extending the history or waiting for proof."},
+        {"id": "examiner_request", "label": "I explicitly asked the examiner for observations and focused examination findings."},
+        {"id": "focused_background", "label": "I completed the focused risk background while transfer was underway."},
+        {"id": "ambulance_no_drive", "label": "I arranged an ambulance and clearly said not to drive."},
+        {"id": "rest_monitor_handover", "label": "I kept David resting, requested observations, and prepared a handover."}
+      ]
+    },
+    {
+      "id": "safety_mirror",
+      "short_label": "Safety mirror",
+      "title": "Where did your run sit?",
+      "intro": "Use the strict mirror below. It does not produce an official result.",
+      "options": [
+        {
+          "id": "likely_safe",
+          "label": "Likely safe",
+          "description": "You recognised the dangerous pattern, arranged urgent ambulance transfer before extended history or clinic proof, requested the required findings, said no driving, and kept care moving."
+        },
+        {
+          "id": "borderline",
+          "label": "Borderline",
+          "description": "You recognised concern, but transfer was delayed or vague, the examiner request was incomplete, or you did not clearly stop private driving."
+        },
+        {
+          "id": "likely_unsafe",
+          "label": "Likely unsafe",
+          "description": "You treated this as indigestion, waited for extended history or clinic tests before transfer, or allowed David to drive."
+        }
+      ]
+    },
+    {
+      "id": "what_changed",
+      "short_label": "What changed",
+      "title": "Follow the road as it changes",
+      "intro": "The first label stays possible, but the danger grows as new information arrives.",
+      "logic_moments": [
+        {
+          "step": "Opening",
+          "signal": "After lunch and indigestion",
+          "road_map": "That may be reflux. Tight chest discomfort can still be dangerous, so keep both paths open and check danger first."
+        },
+        {
+          "step": "Pain story",
+          "signal": "Started with exertion, central, heavy, 8/10, not settling",
+          "road_map": "The pattern is moving away from a simple stomach explanation. Heart danger is now active."
+        },
+        {
+          "step": "New clues",
+          "signal": "Arm and jaw radiation, sweating, nausea, breathlessness",
+          "road_map": "Several warning clues now point in the same unsafe direction. Do not wait for certainty."
+        },
+        {
+          "step": "Decision",
+          "signal": "Clinic tests cannot make the current risk safe",
+          "road_map": "Arrange emergency transfer now. Continue focused assessment while help is coming."
+        },
+        {
+          "step": "While help is coming",
+          "signal": "Observations, focused examination, and risk background are still needed",
+          "road_map": "Ask the examiner clearly and complete only the focused information that helps the handover. The safety action is already moving."
+        },
+        {
+          "step": "Pushback",
+          "signal": "David asks to drive",
+          "road_map": "Driving creates another risk. Explain why, keep him resting, and use the ambulance."
+        }
+      ],
+      "retrieval_prompts": [
+        "What label did David give, and what danger still has to stay open?",
+        "Which new clue changed the safe direction?",
+        "Is the risk already enough to act before more history or proof?",
+        "What must David not do while transfer is being arranged?",
+        "What findings do I need to request from the examiner?",
+        "What focused information belongs in the handover?"
+      ],
+      "recovery_sentence": "Initially I considered indigestion because it started after lunch. However, the pain going to your arm and jaw, sweating, breathlessness, and the fact it is not settling make me more concerned about your heart, so I need to change direction and arrange an ambulance now."
+    },
+    {
+      "id": "safe_version",
+      "short_label": "Model sequence",
+      "title": "A spoken station sequence",
+      "intro": "Speak only the turns marked You say or Ask examiner. Listen to David and examiner responses. Perform the clinical actions. This prototype models recognition, escalation, requested findings, communication, and handover without pretending the diagnosis is certain.",
+      "completeness_note": "This is a prototype sequence for the station tasks. It is not a complete clinical treatment protocol, and medication decisions remain outside this content pending separate sourced clinical review.",
+      "reading_time_plan": [
+        "Recognise the task: focused history, requested findings, explanation, and management.",
+        "Notice the setting: general practice, where emergency assessment is limited.",
+        "Keep the food link as a possibility, not a conclusion.",
+        "Start with onset, activity, site, character, severity, radiation, progress, and associated symptoms.",
+        "Once the pattern is unsafe, arrange urgent transfer before extending the history or waiting for proof.",
+        "Ask the examiner clearly for observations and focused findings while transfer is moving.",
+        "Complete the focused risk background for the handover. Do not assume a diagnosis."
+      ],
+      "portable_station_spine": [
+        {"id": "open", "label": "Open", "candidate_job": "Introduce yourself, confirm David, and move directly to the chest problem."},
+        {"id": "pattern", "label": "Build the pain pattern", "candidate_job": "Ask onset and activity, then site, character, severity, radiation, and whether it is settling."},
+        {"id": "danger", "label": "Check warning symptoms", "candidate_job": "Ask about sweating, nausea, breathlessness, dizziness, and collapse."},
+        {"id": "act", "label": "Act when risk is enough", "candidate_job": "Explain uncertainty and arrange urgent ambulance transfer before extended history or clinic proof."},
+        {"id": "protect", "label": "Protect during transfer", "candidate_job": "Keep David resting, state no driving, and respond calmly to pushback."},
+        {"id": "request", "label": "Request findings", "candidate_job": "Ask the examiner for observations, general appearance, and focused cardiovascular and respiratory findings."},
+        {"id": "complete", "label": "Complete the focused background", "candidate_job": "While transfer is underway, obtain the risk information needed for a concise handover."},
+        {"id": "handover", "label": "Handover", "candidate_job": "Give who, time, pattern, warning symptoms, risks, observations, concern, and actions."}
+      ],
+      "gold_run": [
+        {
+          "step_id": "candidate_open",
+          "speaker": "Ushana",
+          "role": "candidate",
+          "delivery_role": "candidate_to_patient",
+      "role_label": "You say",
+      "instruction": "Speak your line aloud.",
+          "learner_delivery": "speak",
+          "spoken": "Hello David, I am Ushana, one of the doctors here. I understand you have some chest discomfort. Before we start, can I confirm your full name and date of birth?",
+          "road_map": "Open calmly. Confirm the person. Move straight to the problem."
+        },
+        {
+          "step_id": "patient_opening",
+          "speaker": "David",
+          "role": "patient",
+          "delivery_role": "patient_response",
+      "role_label": "David says",
+      "instruction": "Listen only. Do not rehearse David's words.",
+          "learner_delivery": "listen",
+          "spoken": "Doctor, I think it is just indigestion, but my chest feels really tight.",
+          "road_map": "He gives a reassuring label and a concerning symptom. Do not choose yet."
+        },
+        {
+          "step_id": "candidate_onset_trigger",
+          "speaker": "Ushana",
+          "role": "candidate",
+          "delivery_role": "candidate_to_patient",
+      "role_label": "You say",
+      "instruction": "Speak your line aloud.",
+          "learner_delivery": "speak",
+          "spoken": "I can hear that you think it may be indigestion. Because this is chest tightness, I need to check a few urgent things first. When did it start, and what were you doing at the time?",
+          "road_map": "Respect his view. Keep heart danger open. Start with timing and trigger."
+        },
+        {
+          "step_id": "patient_onset_trigger",
+          "speaker": "David",
+          "role": "patient",
+          "delivery_role": "patient_response",
+      "role_label": "David says",
+      "instruction": "Listen only. Do not rehearse David's words.",
+          "learner_delivery": "listen",
+          "spoken": "It started about 45 minutes ago while I was carrying boxes.",
+          "road_map": "Exertion increases concern. The road is changing."
+        },
+        {
+          "step_id": "candidate_pain_pattern",
+          "speaker": "Ushana",
+          "role": "candidate",
+          "delivery_role": "candidate_to_patient",
+      "role_label": "You say",
+      "instruction": "Speak your line aloud.",
+          "learner_delivery": "speak",
+          "spoken": "Please point to where you feel it. Is it sharp, burning, pressure, or tightness? How severe is it out of 10? Does it move anywhere, and is it settling?",
+          "road_map": "Define the pattern quickly: site, character, severity, radiation, and progress."
+        },
+        {
+          "step_id": "patient_pain_pattern",
+          "speaker": "David",
+          "role": "patient",
+          "delivery_role": "patient_response",
+      "role_label": "David says",
+      "instruction": "Listen only. Do not rehearse David's words.",
+          "learner_delivery": "listen",
+          "spoken": "It is in the centre, heavy and tight, about 8 out of 10. It goes into my left arm and jaw, and it is not settling.",
+          "road_map": "Central heavy pain plus radiation and persistence is not safe to manage as simple indigestion."
+        },
+        {
+          "step_id": "candidate_warning_symptoms",
+          "speaker": "Ushana",
+          "role": "candidate",
+          "delivery_role": "candidate_to_patient",
+      "role_label": "You say",
+      "instruction": "Speak your line aloud.",
+          "learner_delivery": "speak",
+          "spoken": "Have you felt sweaty, sick, short of breath, dizzy, or like you might pass out?",
+          "road_map": "Check the symptoms that can travel with serious chest pain."
+        },
+        {
+          "step_id": "patient_warning_symptoms",
+          "speaker": "David",
+          "role": "patient",
+          "delivery_role": "patient_response",
+      "role_label": "David says",
+      "instruction": "Listen only. Do not rehearse David's words.",
+          "learner_delivery": "listen",
+          "spoken": "I feel sweaty and sick, and I am a bit short of breath. It is starting to scare me.",
+          "road_map": "More warning clues line up. Risk is enough to act."
+        },
+        {
+          "step_id": "candidate_escalation",
+          "speaker": "Ushana",
+          "role": "candidate",
+          "delivery_role": "candidate_to_patient",
+      "role_label": "You say",
+      "instruction": "Speak your line aloud.",
+          "learner_delivery": "speak",
+          "spoken": "David, I cannot confirm the exact cause here, but this pattern could be coming from your heart and it is not safe to wait for clinic tests. I am arranging an ambulance now while we continue checking you.",
+          "road_map": "Act as soon as the pattern is unsafe. Do not wait for risk factors or proof before starting transfer."
+        },
+        {
+          "step_id": "patient_pushback",
+          "speaker": "David",
+          "role": "patient",
+          "delivery_role": "patient_response",
+      "role_label": "David says",
+      "instruction": "Listen only. Do not rehearse David's words.",
+          "learner_delivery": "listen",
+          "spoken": "An ambulance? Can I just drive myself? Is it really that serious?",
+          "road_map": "This is new safety information. Private driving is now part of the risk."
+        },
+        {
+          "step_id": "candidate_no_driving",
+          "speaker": "Ushana",
+          "role": "candidate",
+          "delivery_role": "candidate_to_patient",
+      "role_label": "You say",
+      "instruction": "Speak your line aloud.",
+          "learner_delivery": "speak",
+          "spoken": "I know an ambulance feels like a big step. Your symptoms could worsen suddenly, and driving would not be safe. The ambulance team can monitor and treat you on the way. Please stay seated and do not drive.",
+          "road_map": "Name the reason, set the boundary, and keep the tone calm."
+        },
+        {
+          "step_id": "nonspoken_immediate_action",
+          "speaker": "Non-spoken action",
+          "role": "action",
+          "delivery_role": "nonspoken_action",
+      "role_label": "Clinical action",
+      "instruction": "This is a clinical action, not spoken dialogue. Perform or direct it.",
+          "learner_delivery": "perform",
+          "spoken": "Arrange ambulance transfer now. Keep David resting and supervised. Ask staff to bring immediate observations and prepare an ECG if available while transfer is underway.",
+          "road_map": "The safety action is moving. Assessment continues without turning clinic testing into a delay."
+        },
+        {
+          "step_id": "candidate_examiner_request",
+          "speaker": "Ushana",
+          "role": "examiner_request",
+          "delivery_role": "candidate_to_examiner",
+      "role_label": "Ask examiner",
+      "instruction": "Say this request aloud to the examiner.",
+          "learner_delivery": "speak",
+          "spoken": "Examiner, I would like David's immediate observations and general appearance, followed by focused cardiovascular and respiratory examination findings. I would also like to know whether a 12-lead ECG and troponin result are available during this consultation.",
+          "road_map": "Perform the examiner-facing task explicitly. Ask for the findings you need instead of narrating them as an action."
+        },
+        {
+          "step_id": "examiner_findings",
+          "speaker": "Examiner",
+          "role": "examiner",
+          "delivery_role": "examiner_response",
+      "role_label": "Examiner says",
+          "instruction": "Listen to the examiner response.",
+          "learner_delivery": "listen",
+          "spoken": "David looks pale and sweaty. Heart rate is 104, blood pressure 155 over 92, respiratory rate 22, oxygen saturation 95 percent on room air, temperature 36.8, and pain 8 out of 10. His chest is clear, with no new murmur and no calf swelling. A 12-lead ECG can be performed in the clinic. A troponin result is not available within this consultation.",
+          "road_map": "These are examiner-provided findings. They describe the current state; they do not make the management decision for you."
+        },
+        {
+          "step_id": "candidate_focused_background",
+          "speaker": "Ushana",
+          "role": "candidate",
+          "delivery_role": "candidate_to_patient",
+          "role_label": "You say",
+          "instruction": "Speak your line aloud.",
+          "learner_delivery": "speak",
+          "spoken": "While the ambulance is coming, I need a few focused background details. Do you smoke, or have high blood pressure, high cholesterol, diabetes, or a family history of heart problems?",
+          "road_map": "Complete the useful background after escalation has started. It strengthens the handover without delaying safety."
+        },
+        {
+          "step_id": "patient_focused_background",
+          "speaker": "David",
+          "role": "patient",
+          "delivery_role": "patient_response",
+          "role_label": "David says",
+          "instruction": "Listen only. Do not rehearse David's words.",
+          "learner_delivery": "listen",
+          "spoken": "I smoke. I have high blood pressure and high cholesterol. My father had a heart attack.",
+          "road_map": "The background adds weight and belongs in the handover. The transfer decision was already made."
+        },
+        {
+          "step_id": "candidate_handover",
+          "speaker": "Ushana",
+          "role": "candidate",
+          "delivery_role": "candidate_handover",
+          "role_label": "You hand over",
+          "instruction": "Speak your handover aloud.",
+          "learner_delivery": "speak",
+          "spoken": "Ambulance team, this is David Nguyen, 58, with 45 minutes of exertional central heavy chest tightness, 8 out of 10, radiating to his left arm and jaw, with sweating, nausea, and breathlessness. He smokes and has hypertension, high cholesterol, and a family history of heart attack. He is pale and sweaty, heart rate 104, blood pressure 155 over 92, respiratory rate 22, oxygen saturation 95 percent on room air, and pain remains 8 out of 10. I am concerned about a serious heart-related cause. He is resting and has been told not to drive.",
+          "road_map": "Handover who, time, pattern, warning symptoms, risks, observations, concern, and actions."
+        }
+      ]
+    },
+    {
+      "id": "thinking_traps",
+      "short_label": "Thinking traps",
+      "title": "Three places the run can drift",
+      "traps": [
+        {
+          "label": "Accepting the first label",
+          "drift": "After lunch becomes indigestion.",
+          "reset": "The label is a starting idea. The pain pattern decides how safe it is."
+        },
+        {
+          "label": "Waiting for clinic proof",
+          "drift": "Bloods or an ECG must confirm the cause before transfer.",
+          "reset": "The current risk already needs emergency assessment. Testing must not create delay."
+        },
+        {
+          "label": "Treating transport as a detail",
+          "drift": "David can drive because the hospital is close.",
+          "reset": "Symptoms may worsen suddenly. State no driving and use the ambulance."
+        }
+      ]
+    },
+    {
+      "id": "what_if_paths",
+      "short_label": "What-if paths",
+      "title": "Keep the safety rule when the pressure changes",
+      "paths": [
+        {
+          "question": "What if an early ECG looks reassuring?",
+          "answer": "One early ECG does not make ongoing high-risk chest pain safe to manage in the clinic. Continue urgent transfer."
+        },
+        {
+          "question": "What if David keeps asking to drive?",
+          "answer": "Acknowledge the inconvenience, explain that symptoms may worsen suddenly, keep him resting, and repeat that ambulance transfer is the safe plan."
+        }
+      ],
+      "transfer_drills": [
+        {
+          "id": "patient_label_changes",
+          "scenario": "David calls the same exertional central heavy pain and sweating 'trapped wind' instead of indigestion.",
+          "prompt": "Which part should guide your direction?",
+          "choices": [
+            {"id": "follow_label", "label": "Follow the stomach label and observe in the clinic."},
+            {"id": "follow_pattern", "label": "Keep the dangerous pattern active and escalate before certainty."},
+            {"id": "wait_for_proof", "label": "Wait for clinic proof before deciding."}
+          ],
+          "correct_choice_id": "follow_pattern",
+          "feedback_correct": "Correct. The patient's label can change, but the warning pattern still controls the safety decision.",
+          "feedback_retry": "Return to the pattern: exertional central heavy pain plus sweating remains unsafe to dismiss because the patient chose a reassuring label."
+        },
+        {
+          "id": "one_classic_clue_missing",
+          "scenario": "The pain does not radiate, but it remains central, heavy, exertional, 8 out of 10, with sweating and breathlessness.",
+          "prompt": "What happens to your urgent plan?",
+          "choices": [
+            {"id": "continue_escalation", "label": "Continue urgent escalation because the remaining pattern is still concerning."},
+            {"id": "downgrade_risk", "label": "Downgrade the risk because radiation is absent."},
+            {"id": "extend_history_first", "label": "Complete a long background history before deciding."}
+          ],
+          "correct_choice_id": "continue_escalation",
+          "feedback_correct": "Correct. One missing classic clue does not cancel the rest of the warning pattern.",
+          "feedback_retry": "Do not use one absent feature as permission to ignore several present warning features."
+        },
+        {
+          "id": "early_ecg_pressure",
+          "scenario": "An early ECG can be performed, but David still has ongoing high-risk symptoms.",
+          "prompt": "Where does the ECG fit?",
+          "choices": [
+            {"id": "during_transfer", "label": "Arrange it while urgent transfer is moving, without turning it into a delay."},
+            {"id": "before_transfer", "label": "Wait for the ECG before arranging transfer."},
+            {"id": "normal_means_drive", "label": "If it looks reassuring, let David drive."}
+          ],
+          "correct_choice_id": "during_transfer",
+          "feedback_correct": "Correct. The test can add information while the safety plan continues.",
+          "feedback_retry": "A test belongs inside the active safety plan. It should not become the reason transfer waits."
+        }
+      ]
+    },
+    {
+      "id": "try_again",
+      "short_label": "Try again",
+      "title": "Choose one weak turn",
+      "intro": "Practise one part, then drive the full road again.",
+      "practice_ladder": [
+        "Read the spoken station sequence.",
+        "Understand the road map beside each line.",
+        "Speak each of your lines and perform each clinical action.",
+        "Use cue words only.",
+        "Run the station with teaching hidden.",
+        "Practise one patient challenge.",
+        "Retry the weak turn.",
+        "Revisit the station later."
+      ],
+      "retry_options": [
+        {
+          "id": "danger_explanation",
+          "label": "Explain the danger",
+          "practice_task": "Tell David why you are changing direction without claiming a certain diagnosis.",
+          "hint": "Use three parts: I cannot confirm it here. The pattern could be heart-related. Waiting here is not safe.",
+          "model_line": "I cannot confirm the exact cause here, but this pattern could be coming from your heart and it is not safe to wait for clinic tests."
+        },
+        {
+          "id": "no_driving",
+          "label": "Set the no-driving boundary",
+          "practice_task": "Respond to David's request to drive without sounding harsh.",
+          "hint": "Acknowledge the disruption, name sudden worsening, then state the safe transport plan.",
+          "model_line": "I know an ambulance feels like a big step, but your symptoms could worsen suddenly and driving would not be safe."
+        },
+        {
+          "id": "handover",
+          "label": "Give the handover",
+          "practice_task": "Speak the story in under 45 seconds: time, pattern, associated symptoms, risks, observations, concern, action.",
+          "hint": "Follow one line: who, what, warning clues, current state, what I need.",
+          "model_line": "David is 58 with 45 minutes of exertional central heavy chest tightness radiating to his arm and jaw, with sweating, nausea, and breathlessness. I am concerned about a serious heart-related cause and have arranged urgent ambulance transfer."
+        },
+        {
+          "id": "full_run",
+          "label": "Run the whole station",
+          "practice_task": "Return to Blind Station and complete the full road without teaching visible.",
+          "hint": "Open, pain pattern, warning symptoms, act, no driving, request findings, focused risks, handover.",
+          "model_line": "Use the cue road only if you freeze, then hide it and begin again."
+        }
+      ]
+    },
+    {
+      "id": "confidence_after_review",
+      "short_label": "Confidence",
+      "title": "How familiar does this road feel now?",
+      "intro": "Choose the closest statement. Journey will use it to suggest the next useful move.",
+      "levels": [
+        {"value": 1, "label": "I still need the model."},
+        {"value": 2, "label": "I can start, but I may lose the road."},
+        {"value": 3, "label": "I can recognise the danger and change direction."},
+        {"value": 4, "label": "I can explain the risk and use this escalation sequence."},
+        {"value": 5, "label": "I can run this prototype sequence without the model."}
+      ]
+    }
+  ]
+}
