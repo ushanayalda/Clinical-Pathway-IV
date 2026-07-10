@@ -114,7 +114,8 @@ const learnerSpokenTurns = safeVersion?.gold_run?.filter((line) => line.learner_
 const spokenWordCount = (value = "") => value.trim().split(/\s+/).filter(Boolean).length;
 check(whatChanged?.logic_moments?.length >= 3, "Logic and flexibility track has at least three checkpoints");
 check(Boolean(whatChanged?.recovery_sentence), "Recovery pathway is present");
-check(safeVersion?.reading_time_plan?.length >= 5, "Reading-Time Plan is complete");
+check(safeVersion?.reading_time_plan?.length === 3, "Reading-Time Plan uses three compact cues");
+check(safeVersion?.learning_moments?.length === 4 && safeVersion.learning_moments.every((item) => item.signal && item.action && item.reason), "Learning map uses four distinct reasoning turns");
 check(safeVersion?.gold_run?.length >= 12, "Gold Run is a complete spoken sequence");
 check(safeVersion.gold_run.every((line) => line.speaker && line.spoken && line.road_map), "Every Gold Run step has speaker, spoken line, and road map");
 check(safeVersion.gold_run.some((line) => line.speaker === "Ushana"), "Gold Run contains learner-spoken doctor lines");
@@ -124,7 +125,8 @@ check(safeVersion.gold_run.some((line) => line.delivery_role === "candidate_hand
 check(safeVersion.gold_run.filter((line) => ["examiner_findings", "candidate_handover"].includes(line.step_id)).every((line) => line.spoken.includes("\n")), "Dense examiner and handover text is split into readable chunks");
 check(learnerSpokenTurns.filter((line) => line.delivery_role !== "candidate_handover").every((line) => spokenWordCount(line.spoken) <= 45), "Learner-spoken turns stay short enough to rehearse");
 check(learnerSpokenTurns.filter((line) => line.delivery_role === "candidate_handover").every((line) => spokenWordCount(line.spoken) <= 105), "Handover stays within the 45-second practice target");
-check(tryAgain?.practice_ladder?.length >= 8, "Practice Ladder is complete");
+check(!tryAgain?.practice_ladder, "Repeated Practice Ladder instructions are removed");
+check(tryAgain?.retry_options?.length === 3, "Guided practice offers three focused areas");
 check(tryAgain?.retry_options?.every((item) => item.hint && item.model_line && item.practice_task), "Each guided retry has one targeted Hint");
 const transferDrills = whatIfPaths?.transfer_drills ?? [];
 check(transferDrills.length === 3, "Review contains exactly three transfer drills");
@@ -133,7 +135,7 @@ check(
   "Transfer drills cover label change, missing clue, and early-test pressure"
 );
 check(transferDrills.every((drill) => drill.choices?.length === 3 && drill.correct_choice_id && drill.feedback_correct && drill.feedback_retry), "Every transfer drill has three choices and corrective feedback");
-check(confidenceStage?.levels?.length === 5, "Confidence Review uses five descriptive levels");
+check(confidenceStage?.levels?.length === 3, "Confidence Review uses three clear levels");
 
 check(/READING_SECONDS\s*=\s*2\s*\*\s*60/.test(app), "Reading state has a strict two-minute duration");
 check(/STATION_SECONDS\s*=\s*8\s*\*\s*60/.test(app), "Blind Station has a strict eight-minute duration");
@@ -142,7 +144,9 @@ check(/attempt_history|attempts/.test(app), "Runtime preserves objective attempt
 check(/pushback_opened|response_to_plan_opened/.test(app), "Runtime records whether patient pushback was opened");
 check(/duration_seconds|elapsed_seconds/.test(app), "Runtime records objective attempt duration");
 check(/review_stage_progress|review_completed_stages|visited_review_stages/.test(app), "Runtime tracks staged Review progress independently from confidence");
-check(/learning-instruction/.test(app), "Learning mode exposes a role-correct instruction label");
+check(/learning_moments/.test(app), "Learning mode uses the compact reasoning map");
+check(!/stage\.practice_ladder/.test(app), "Runtime does not render repeated practice instructions");
+check(!/Next part|Start full spoken practice/.test(app), "Review does not force a second turn-by-turn Actual Run");
 check(/data-attempt-evidence/.test(app), "Review exposes objective attempt evidence");
 check(/data-attempt-history/.test(app), "Journey exposes retained attempt history");
 

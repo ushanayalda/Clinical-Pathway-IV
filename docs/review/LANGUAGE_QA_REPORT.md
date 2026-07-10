@@ -42,6 +42,10 @@ The audit covered every learner-facing string in:
 - Added David's diabetes answer so his reply matches the question.
 - Made the urgent-plan control available before the full history list without revealing the answer.
 - Replaced hidden phone feedback with an inline message that does not cover content.
+- Removed repeated Home and Library explanations.
+- Replaced the repeated 17-turn learning map with four signal-action-reason turns.
+- Reduced Review instructions, readiness choices, changed-detail questions, and Journey status repetition.
+- Made Hints the consistent learner-facing label.
 
 ## Automated safeguards
 
@@ -54,7 +58,7 @@ The audit covered every learner-facing string in:
 
 ## QA result
 
-- Static contract, language and authority checks: 74 passed
+- Static contract, language and authority checks: 78 passed
 - Browser scenarios: 7 passed
 - Desktop visual review: passed
 - Phone visual review: passed

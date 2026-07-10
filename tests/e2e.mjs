@@ -118,24 +118,8 @@ async function currentReviewStage(page) {
   return Number(label.match(/Stage\s+(\d+)\s+of/i)?.[1] ?? 0);
 }
 
-async function exhaustSafeVersion(page) {
-  const start = page.getByRole("button", { name: "Start full spoken practice" });
-  if (await start.count()) await start.click();
-  const finish = page.getByRole("button", { name: "Finish full spoken practice" });
-  if (await finish.count()) await finish.click();
-  const nextTurn = page.getByRole("button", { name: "Next part" });
-  let guard = 0;
-  while (await nextTurn.count()) {
-    await nextTurn.click();
-    guard += 1;
-    assert(guard <= 20, "Safe version did not reach its final mapped turn");
-  }
-}
-
 async function prepareCurrentReviewStage(page, stageNumber) {
   if (stageNumber === 1) {
-    const boxes = page.locator("[data-self-check]");
-    for (let index = 0; index < await boxes.count(); index += 1) await boxes.nth(index).check();
     await page.locator('[data-action="confidence-before"][data-confidence="3"]').click();
   }
   if (stageNumber === 2) {
@@ -145,19 +129,23 @@ async function prepareCurrentReviewStage(page, stageNumber) {
     const reveal = page.locator('[data-action="reveal-reasoning"]');
     if (await reveal.count()) await reveal.click();
   }
-  if (stageNumber === 4) await exhaustSafeVersion(page);
   if (stageNumber === 6) {
-    const answers = [
-      ["patient_label_changes", "follow_pattern"],
-      ["one_classic_clue_missing", "continue_escalation"],
-      ["early_ecg_pressure", "during_transfer"]
-    ];
-    for (const [drillId, choiceId] of answers) {
+    const correctChoices = {
+      patient_label_changes: "follow_pattern",
+      one_classic_clue_missing: "continue_escalation",
+      early_ecg_pressure: "during_transfer"
+    };
+    const drillIds = await page.locator(".transfer-drill").evaluateAll((items) => items.map((item) => item.querySelector("[data-drill-id]")?.dataset.drillId).filter(Boolean));
+    for (const drillId of drillIds) {
+      const choiceId = correctChoices[drillId];
       await page.locator(`[data-action="transfer-choice"][data-drill-id="${drillId}"][data-choice-id="${choiceId}"]`).click();
     }
   }
   if (stageNumber === 7) {
     await page.getByRole("button", { name: /Explain why it is urgent/ }).click();
+    await page.waitForSelector("#guided-title");
+    await page.getByRole("button", { name: "Done practising" }).click();
+    await page.waitForSelector("#review-title");
   }
 }
 
@@ -167,6 +155,11 @@ async function advanceReviewTo(page, targetStage) {
     await assertLearnerLanguage(page);
     await assertPlainLanguage(page);
     await prepareCurrentReviewStage(page, stage);
+    const stageAfterPreparation = await currentReviewStage(page);
+    if (stageAfterPreparation > stage) {
+      stage = stageAfterPreparation;
+      continue;
+    }
     const next = page.locator('[data-action="review-next"]');
     assert(await next.count(), `Review Stage ${stage} has no Next stage control`);
     assert(!(await next.isDisabled()), `Review Stage ${stage} cannot advance after its required action`);
@@ -179,7 +172,7 @@ async function advanceReviewTo(page, targetStage) {
 
 async function completeReview(page) {
   await advanceReviewTo(page, 8);
-  await page.locator('[data-action="confidence-choice"][data-confidence="4"]').click();
+  await page.locator('[data-action="confidence-choice"][data-confidence="3"]').click();
   await page.locator('[data-action="review-next"]').click();
   const state = await savedState(page);
   assert(state.review_status === "completed", "Review did not complete after every required stage and confidence selection");
@@ -254,25 +247,16 @@ async function runRoleCorrectLearning(browser) {
     assert(runRoles.some((label) => /action to take/i.test(label)), "Actual Run does not distinguish non-spoken actions");
     await assertLearnerLanguage(page);
     await assertPlainLanguage(page);
-    await page.getByRole("button", { name: "See it step by step" }).click();
+    await page.getByRole("button", { name: "See the 4 key turns" }).click();
+    assert(/Key turn 1 of 4/i.test(await bodyText(page)), "Learning map does not begin with four compact turns");
+    assert(/What you notice|What you do|Why/i.test(await page.locator("#learning-step").innerText()), "Learning turn does not separate signal, action, and reason");
+    assert(!(await page.locator(".learning-instruction").count()), "Compact reasoning map repeats role instructions");
+    assert(!/Hello David, I'm Ushana/i.test(await page.locator("#learning-step").innerText()), "Compact reasoning map repeats the exact Actual Run line");
 
-    const instruction = page.locator(".learning-instruction");
-    assert(await instruction.count(), "Learning mode has no role-correct .learning-instruction label");
-    assert(/speak.*(your|doctor).*line|say.*aloud/i.test(await instruction.innerText()), "Doctor step is not labelled as learner-spoken");
-
-    await page.getByRole("button", { name: "Next step" }).click();
-    assert(/david|patient/i.test(await page.locator(".role-label").innerText()), "Second model step is not labelled as the patient response");
-    const patientInstruction = await instruction.innerText();
-    assert(/patient|david|listen|read/i.test(patientInstruction), "Patient step is not labelled as a patient response");
-    assert(!/speak (this|the) line aloud|say (this|the) line aloud/i.test(patientInstruction), "Patient response incorrectly tells the learner to speak David's line");
-
-    let guard = 0;
-    while (!/action to take/i.test(await page.locator(".role-label").innerText())) {
-      await page.getByRole("button", { name: "Next step" }).click();
-      guard += 1;
-      assert(guard <= 20, "Learning mode never reached the non-spoken Action step");
+    for (let turn = 2; turn <= 4; turn += 1) {
+      await page.getByRole("button", { name: "Next key turn" }).click();
+      assert(new RegExp(`Key turn ${turn} of 4`, "i").test(await bodyText(page)), `Learning map did not reach key turn ${turn}`);
     }
-    assert(/not spoken|do not say|clinical action/i.test(await instruction.innerText()), "Action step is not clearly labelled as non-spoken");
     await assertLearnerLanguage(page);
     await assertPlainLanguage(page);
     await page.evaluate(() => document.activeElement?.blur());
@@ -291,7 +275,7 @@ async function runReviewCompletionIntegrity(browser) {
     await finishObjectiveAttempt(page);
     const confidenceTab = page.getByRole("button", { name: "8. Ready now?" });
     if (!(await confidenceTab.isDisabled())) await confidenceTab.click();
-    const confidence = page.locator('[data-action="confidence-choice"][data-confidence="4"]');
+    const confidence = page.locator('[data-action="confidence-choice"][data-confidence="3"]');
     if (await confidence.count() && !(await confidence.isDisabled())) await confidence.click();
 
     const state = await savedState(page);
@@ -299,19 +283,19 @@ async function runReviewCompletionIntegrity(browser) {
     assert(!/Review recorded/i.test(await bodyText(page)), "UI falsely announced Review completion from confidence alone");
 
     await page.getByRole("button", { name: "Review", exact: true }).click();
-    const firstStage = page.getByRole("button", { name: "1. Self-check" });
+    const firstStage = page.getByRole("button", { name: "1. Your attempt" });
     if (!(await firstStage.isDisabled())) await firstStage.click();
     await advanceReviewTo(page, 6);
     const choices = page.locator('[data-action="transfer-choice"][data-drill-id][data-choice-id]');
     const drillIds = await choices.evaluateAll((items) => [...new Set(items.map((item) => item.dataset.drillId))].sort());
-    assert(drillIds.length === 3, "Review does not expose exactly three transfer drills");
+    assert(drillIds.length === 2, "Review does not expose exactly two transfer drills per attempt");
     assert(
-      JSON.stringify(drillIds) === JSON.stringify(["early_ecg_pressure", "one_classic_clue_missing", "patient_label_changes"]),
-      "Transfer drills do not cover label change, missing clue, and early-test pressure"
+      drillIds.includes("one_classic_clue_missing") && drillIds.some((id) => ["patient_label_changes", "early_ecg_pressure"].includes(id)),
+      `Review does not combine the missing-clue drill with one rotating drill: ${drillIds.join(", ")}`
     );
     await page.waitForTimeout(3300);
     await page.evaluate(() => document.activeElement?.blur());
-    await page.locator("#review-stage-title").evaluate((element) => {
+    await page.locator("#review-title").evaluate((element) => {
       element.scrollIntoView({ block: "start" });
       window.scrollBy(0, -90);
     });
@@ -329,11 +313,9 @@ async function runAttemptEvidenceAndHistory(browser) {
     await finishObjectiveAttempt(page);
     const evidence = page.locator("[data-attempt-evidence]");
     assert(await evidence.isVisible(), "Review has no visible objective attempt evidence region");
-    const evidenceSummary = evidence.locator("summary");
-    if (await evidenceSummary.count() && await evidence.getAttribute("open") === null) await evidenceSummary.click();
     const evidenceText = await evidence.innerText();
     assert(/7\s*(of|\/)\s*7|7 responses/i.test(evidenceText), "Attempt evidence does not report revealed-response coverage");
-    assert(/David\'s concern\s*opened/i.test(evidenceText), "Attempt checklist does not confirm that David\'s concern was opened");
+    assert(/required parts\s*opened/i.test(evidenceText), "Attempt evidence does not summarise the required responses");
     assert(/duration|time used|elapsed/i.test(evidenceText), "Attempt evidence does not report objective duration");
 
     const beforeReview = await savedState(page);
@@ -355,9 +337,7 @@ async function runAttemptEvidenceAndHistory(browser) {
     const historicalRecords = page.locator("[data-attempt-history] [data-attempt-record]");
     assert(await historicalRecords.count() >= 1, "Journey history has no completed attempt record");
 
-    await page.locator('[data-action="start-guided"]').click();
-    await page.locator('[data-action="complete-guided"]').click();
-    await page.getByRole("button", { name: "Start timed station" }).click();
+    await page.locator('[data-action="prepare-blind"]').click();
     const afterReset = await savedState(page);
     const afterHistory = afterReset.attempt_history ?? afterReset.attempts ?? [];
     assert(afterHistory.length === beforeHistory.length, "Starting a retry erased or duplicated prior attempt history");

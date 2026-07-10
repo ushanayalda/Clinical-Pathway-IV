@@ -1,6 +1,6 @@
 case_id: CP-C001
 case_title: Chest discomfort after lunch
-report_version: v2-draft-prototype-3-human-language
+report_version: v2-draft-prototype-4-low-friction
 report_date: 2026-07-10
 scope: Local Case 001 five-room learning, execution, review, retry, and transfer prototype
 implementation_status: pass
@@ -17,7 +17,7 @@ accessibility_technical_status: pass
 no_drift_status: pass
 renderer_technical_status: pass
 prototype_evidence:
-  static_contract_checks: 74
+  static_contract_checks: 78
   browser_scenarios: 7
   verified_behaviours:
     - confidence alone cannot complete Review
@@ -32,7 +32,11 @@ prototype_evidence:
     - learner-spoken turns have enforced rehearsal-length limits
     - two-minute reading and strict eight-minute Station clocks are separate
     - time expiry locks Station and opens Review
-    - three changed-detail questions require safe decisions
+    - two changed-detail questions per attempt require safe decisions from a three-drill bank
+    - the full Actual Run appears only once per learning loop unless reopened by choice
+    - the repeated 17-turn map is replaced by four signal-action-reason turns
+    - guided practice opens directly from one selected area
+    - Journey shows one next action and collapses past-attempt details
     - mobile current response remains visible after reveal
     - mobile Review retains stage orientation and one primary action
     - keyboard focus remains meaningful after state changes
@@ -66,6 +70,11 @@ resolved_audit_findings:
   - read-only what-if content without transfer decisions
   - missing reading countdown and non-strict Station expiry
   - mobile offscreen response, focus loss, stage disorientation, and feedback obstruction
+  - repeated Home and Library explanations
+  - repeated full Actual Run and forced 17-turn Review replay
+  - repeated Station, Review, and Journey checklists
+  - eight-step practice instruction block
+  - five-level readiness scale and duplicated Journey confidence metrics
 remaining_blockers:
   - Claim-level Australian clinical sources are not populated or approved.
   - The clinical sequence has not received named human clinical approval.
