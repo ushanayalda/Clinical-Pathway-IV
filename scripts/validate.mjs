@@ -27,6 +27,36 @@ async function listFiles(path) {
   return nested.flat();
 }
 
+const internalContentKeys = new Set([
+  "case_id",
+  "phase_id",
+  "pattern_id",
+  "mode",
+  "status",
+  "unlock_rule",
+  "unlock_source",
+  "interaction_role",
+  "request_role",
+  "delivery_role",
+  "learner_delivery",
+  "sets_state",
+  "stage_order",
+  "id",
+  "step_id",
+  "role",
+  "correct_choice_id"
+]);
+
+function learnerStrings(value, parentKey = "") {
+  if (internalContentKeys.has(parentKey)) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap((item) => learnerStrings(item, parentKey));
+  if (value && typeof value === "object") {
+    return Object.entries(value).flatMap(([key, item]) => learnerStrings(item, key));
+  }
+  return [];
+}
+
 const [library, station, review, governance, index, app, styles] = await Promise.all([
   json("data/site/library.json"),
   json("data/cases/cp-c001/station.json"),
@@ -45,6 +75,7 @@ check(!JSON.stringify(library).match(/diagnosis|gold_run|logic_track|critical_er
 check(station.case_id === "CP-C001", "Station identity is CP-C001");
 check(station.mode === "blind_station", "Station mode is blind_station");
 check(station.station_card?.station_number === "001", "Station number is 001");
+check(!/candidate/i.test(station.station_card?.heading || ""), "Station Card uses learner-facing heading");
 check(station.station_card?.tasks?.length === 4, "Station Card contains four tasks");
 check(station.opening_line?.unlock_source === "station_started", "Patient opening is gated by Start");
 check(station.plan_gate?.label === "I have discussed my plan.", "Plan gate uses the exact authority label");
@@ -79,6 +110,8 @@ const safeVersion = review.stages.find((stage) => stage.id === "safe_version");
 const whatIfPaths = review.stages.find((stage) => stage.id === "what_if_paths");
 const tryAgain = review.stages.find((stage) => stage.id === "try_again");
 const confidenceStage = review.stages.find((stage) => stage.id === "confidence_after_review");
+const learnerSpokenTurns = safeVersion?.gold_run?.filter((line) => line.learner_delivery === "speak") ?? [];
+const spokenWordCount = (value = "") => value.trim().split(/\s+/).filter(Boolean).length;
 check(whatChanged?.logic_moments?.length >= 3, "Logic and flexibility track has at least three checkpoints");
 check(Boolean(whatChanged?.recovery_sentence), "Recovery pathway is present");
 check(safeVersion?.reading_time_plan?.length >= 5, "Reading-Time Plan is complete");
@@ -87,6 +120,10 @@ check(safeVersion.gold_run.every((line) => line.speaker && line.spoken && line.r
 check(safeVersion.gold_run.some((line) => line.speaker === "Ushana"), "Gold Run contains learner-spoken doctor lines");
 check(safeVersion.gold_run.some((line) => line.speaker === "David"), "Gold Run contains patient-response lines");
 check(safeVersion.gold_run.some((line) => /action/i.test(line.speaker)), "Gold Run contains non-spoken clinical actions");
+check(safeVersion.gold_run.some((line) => line.delivery_role === "candidate_handover" && line.role_label === "You hand over"), "Gold Run labels the handover as learner-spoken");
+check(safeVersion.gold_run.filter((line) => ["examiner_findings", "candidate_handover"].includes(line.step_id)).every((line) => line.spoken.includes("\n")), "Dense examiner and handover text is split into readable chunks");
+check(learnerSpokenTurns.filter((line) => line.delivery_role !== "candidate_handover").every((line) => spokenWordCount(line.spoken) <= 45), "Learner-spoken turns stay short enough to rehearse");
+check(learnerSpokenTurns.filter((line) => line.delivery_role === "candidate_handover").every((line) => spokenWordCount(line.spoken) <= 105), "Handover stays within the 45-second practice target");
 check(tryAgain?.practice_ladder?.length >= 8, "Practice Ladder is complete");
 check(tryAgain?.retry_options?.every((item) => item.hint && item.model_line && item.practice_task), "Each guided retry has one targeted Hint");
 const transferDrills = whatIfPaths?.transfer_drills ?? [];
@@ -148,9 +185,15 @@ const learnerFiles = [
 ];
 const learnerText = (await Promise.all(learnerFiles.map(text))).join("\n");
 const learnerContentText = [index, library, station, review].map((value) => typeof value === "string" ? value : JSON.stringify(value)).join("\n");
+const visibleDataText = [library, station, review].flatMap((value) => learnerStrings(value)).join("\n");
+const roboticLanguage = /\b(certainty|prototype|retrieval|spacing)\b|clinic proof|strict mirror|Safety Mirror|weak turn|patient pushback|continuous rehearsal|portable station spine|heart danger|safe direction|safety action|Where did your run sit|After lunch becomes indigestion|examiner-facing/i;
 check(!/[\u2014]/.test(learnerText), "Learner files contain no long dash character");
 check(!/\bAMC\b|\bADHD\b/.test(learnerText), "Learner files contain no internal labels or branding");
 check(!/\bDr\./.test(learnerText), "Learner files use first-name introduction style");
+check(!/\bcandidate\b/i.test(visibleDataText), "Learner-facing data contains no candidate label");
+check(!roboticLanguage.test(visibleDataText), "Learner-facing data contains no audited robotic or academic phrases");
+check(/Does it feel sharp, burning, heavy, or tight\?/.test(visibleDataText), "Pain question uses natural parallel wording");
+check(/Do you smoke\? Do you have diabetes/.test(visibleDataText), "Risk questions use short natural sentences");
 check(!/\b(badges?|XP|streaks?|confetti|leaderboard|troph(?:y|ies))\b/i.test(learnerContentText), "Learner content contains no gamification");
 check(!/voice recognition|microphone required|automatic pass|official score/i.test(learnerText), "Learner files contain no fake scoring or voice requirement");
 
