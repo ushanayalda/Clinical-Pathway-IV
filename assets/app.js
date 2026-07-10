@@ -92,11 +92,41 @@ function escapeHtml(value = "") {
     .replaceAll("'", "&#039;");
 }
 
-function announce(message) {
+function formatSpoken(value = "") {
+  return escapeHtml(value).replaceAll("\n", "<br>");
+}
+
+function clearAnnouncement() {
   clearTimeout(statusHandle);
+  document.querySelector(".status-message-inline")?.remove();
+  statusMessage.classList.remove("is-visible");
+  document.body.classList.remove("status-visible");
+}
+
+function announce(message) {
+  clearAnnouncement();
   statusMessage.textContent = message;
   statusMessage.classList.add("is-visible");
-  statusHandle = setTimeout(() => statusMessage.classList.remove("is-visible"), 3200);
+  document.body.classList.add("status-visible");
+
+  let inlineStatus;
+  if (matchMedia("(max-width: 640px)").matches) {
+    inlineStatus = document.createElement("div");
+    inlineStatus.className = "status-message-inline";
+    inlineStatus.setAttribute("aria-hidden", "true");
+    inlineStatus.textContent = message;
+    const active = document.activeElement;
+    const actionRow = active?.closest?.(".action-row");
+    const container = active?.closest?.(".review-stage, .room--station, .room") || main.querySelector(".room");
+    if (actionRow) actionRow.before(inlineStatus);
+    else container?.prepend(inlineStatus);
+  }
+
+  statusHandle = setTimeout(() => {
+    statusMessage.classList.remove("is-visible");
+    document.body.classList.remove("status-visible");
+    inlineStatus?.remove();
+  }, 4200);
 }
 
 async function fetchJson(path) {
@@ -217,12 +247,15 @@ function formatDuration(totalSeconds = 0) {
 
 function roleMeta(step = {}) {
   const role = step.role || (step.speaker === "Ushana" ? "candidate" : step.speaker === "David" ? "patient" : step.speaker === "Examiner" ? "examiner" : "action");
+  if (step.delivery_role === "candidate_handover") {
+    return { role: "candidate", label: "You hand over", instruction: "Say your handover aloud." };
+  }
   const defaults = {
-    candidate: ["You say", "Speak your line aloud."],
-    patient: ["David says", "Listen only. Do not rehearse the patient's words."],
-    examiner_request: ["Ask examiner", "Say this request aloud to the examiner."],
-    examiner: ["Examiner says", "Receive this information. Do not rehearse it as your line."],
-    action: ["Clinical action", "This is a clinical action, not spoken dialogue. Perform or direct it."]
+    candidate: ["You say", "Say this aloud."],
+    patient: ["David says", "Listen to David."],
+    examiner_request: ["You ask the examiner", "Say this to the examiner."],
+    examiner: ["Examiner says", "Read the examiner's findings."],
+    action: ["Action to take", "Do this. Do not say it aloud."]
   };
   const [label, instruction] = defaults[role] || defaults.action;
   return { role, label, instruction };
@@ -244,30 +277,30 @@ function syncPracticeTimer() {
 
 function nextAction() {
   if (!state.station_started && !state.attempt_finished) {
-    return { label: "Choose how to start", room: "library", detail: "Learn the road or practise it blind." };
+    return { label: "Choose how to start", room: "library", detail: "Learn from the Actual Run or practise without prompts." };
   }
   if (state.station_started && !state.attempt_finished) {
-    return { label: "Continue Station 001", room: "station", detail: "Your live attempt is still open." };
+    return { label: "Continue Station 001", room: "station", detail: "Your timed station is still open." };
   }
   if (state.attempt_finished && state.review_status !== "completed") {
-    return { label: "Continue Review", room: "review", detail: "Complete the evidence before confidence is recorded." };
+    return { label: "Continue Review", room: "review", detail: "Work through each part, then choose what to practise." };
   }
   if (state.weak_segment && state.weak_segment !== "full_run" && !state.guided_retry_completed) {
-    return { label: "Practise one weak turn", action: "start-guided", detail: "Use one Hint, then try the station again." };
+    return { label: "Practise one part", action: "start-guided", detail: "Use one Hint, say it aloud, then try the station again." };
   }
-  return { label: "Run Station 001 again", action: "prepare-blind", detail: "Return without the model and drive the full road." };
+  return { label: "Run Station 001 again", action: "prepare-blind", detail: "Try the whole station again without the example." };
 }
 
 function renderHome() {
   const action = nextAction();
   const attemptLabel = state.attempt_finished ? "Station finished" : state.station_started ? "In progress" : "Not started";
-  const reviewLabel = state.review_status === "completed" ? "Reviewed" : state.review_unlocked ? "Ready" : "Locked until Finish";
+  const reviewLabel = state.review_status === "completed" ? "Reviewed" : state.review_unlocked ? "Ready" : "Finish station first";
 
   return `
     <section class="room" aria-labelledby="home-title">
-      <p class="eyebrow">Practise. Understand. Speak.</p>
-      <h1 id="home-title">Drive the clinical road before exam pressure.</h1>
-      <p class="lead">See the prototype model sequence, understand each turn, practise it aloud, then try the station with the teaching hidden.</p>
+      <p class="eyebrow">Learn it. Say it. Practise it.</p>
+      <h1 id="home-title">Know what to do, then practise saying it.</h1>
+      <p class="lead">First, read a full safe example. Then practise without prompts and review one part at a time.</p>
 
       <div class="hero-grid">
         <article class="panel">
@@ -275,7 +308,7 @@ function renderHome() {
           <h2>Chest discomfort after lunch</h2>
           <p class="muted">Phase 1 · Dangerous chest pain · Patient consultation</p>
           <div class="resume-line">
-            <span class="small muted">Next useful move</span>
+            <span class="small muted">Your next step</span>
             <strong>${escapeHtml(action.label)}</strong>
             <span>${escapeHtml(action.detail)}</span>
           </div>
@@ -286,13 +319,13 @@ function renderHome() {
         </article>
 
         <aside class="panel panel--tint" aria-labelledby="rooms-title">
-          <h2 id="rooms-title">One pathway, five rooms</h2>
+          <h2 id="rooms-title">One station, five clear steps</h2>
           <ol class="room-list">
-            <li><span class="room-number">1</span><span><strong>Home</strong><br><span class="small">Find the next move.</span></span></li>
+            <li><span class="room-number">1</span><span><strong>Home</strong><br><span class="small">See your next step.</span></span></li>
             <li><span class="room-number">2</span><span><strong>Library</strong><br><span class="small">Choose the station.</span></span></li>
-            <li><span class="room-number">3</span><span><strong>Station</strong><br><span class="small">Speak and reveal.</span></span></li>
-            <li><span class="room-number">4</span><span><strong>Review</strong><br><span class="small">Compare one stage at a time.</span></span></li>
-            <li><span class="room-number">5</span><span><strong>Journey</strong><br><span class="small">Choose the next turn.</span></span></li>
+            <li><span class="room-number">3</span><span><strong>Station</strong><br><span class="small">Practise aloud.</span></span></li>
+            <li><span class="room-number">4</span><span><strong>Review</strong><br><span class="small">See what to improve.</span></span></li>
+            <li><span class="room-number">5</span><span><strong>Journey</strong><br><span class="small">Choose what to practise next.</span></span></li>
           </ol>
         </aside>
       </div>
@@ -329,8 +362,8 @@ function renderLibrary() {
                 <p>${escapeHtml(station.recommended_action)}</p>
               </div>
               <div class="action-row">
-                <button class="button button--secondary" type="button" data-action="start-learning">Learn the road</button>
-                <button class="button" type="button" data-action="prepare-blind">Practise blind</button>
+                <button class="button button--secondary" type="button" data-action="start-learning">Learn from Actual Run</button>
+                <button class="button" type="button" data-action="prepare-blind">Practise without prompts</button>
               </div>
             </article>`).join("")}
         </div>`).join("")}
@@ -339,8 +372,8 @@ function renderLibrary() {
   return `
     <section class="room" aria-labelledby="library-title">
       <p class="eyebrow">Library</p>
-      <h1 id="library-title">Choose the road you are training.</h1>
-      <p class="lead">Learn the prototype model sequence first, or enter Blind Station with all teaching hidden.</p>
+      <h1 id="library-title">Choose a station to practise.</h1>
+      <p class="lead">Start with the full spoken example, or try the station without prompts.</p>
       ${phases}
     </section>`;
 }
@@ -357,7 +390,7 @@ function renderReadingScreen() {
   const card = stationData.station_card;
   return `
     <section class="room room--reading" aria-labelledby="reading-title">
-      <div class="reading-note"><div><strong>2-minute reading</strong><span>Find the task, setting, danger and first move. The patient speaks only after Start station.</span></div><span id="reading-clock" role="timer" aria-label="Reading time remaining">02:00</span></div>
+      <div class="reading-note"><div><strong>2-minute reading</strong><span>Read the tasks. Notice the setting. Decide what you need to do first. David speaks after you start.</span></div><span id="reading-clock" role="timer" aria-label="Reading time remaining">02:00</span></div>
       <article class="station-card">
         <header class="station-card__top">
           <p class="eyebrow" style="color:#cfe7ea">Station ${escapeHtml(card.station_number)}</p>
@@ -372,7 +405,7 @@ function renderReadingScreen() {
             <button class="button" type="button" data-action="start-station">Start station</button>
             <button class="button button--secondary" type="button" data-room="library">Back to Library</button>
           </div>
-          <p class="small muted" style="margin-top:16px">The reading clock is live. Blind Station hides the model, logic and Review until you finish.</p>
+          <p class="small muted" style="margin-top:16px">The clock is running. The Actual Run and Review stay hidden until you finish the station.</p>
         </div>
       </article>
     </section>`;
@@ -387,10 +420,10 @@ function visibleRevealActions() {
 
 function stationCompletionItems() {
   const required = stationData.completion_evidence?.required_reveals || [
-    { id: "pain_story", label: "Focused pain story" },
-    { id: "associated_symptoms", label: "Associated warning symptoms" },
-    { id: "observations_examination", label: "Examiner findings requested" },
-    { id: "response_to_plan", label: "Patient pushback handled" }
+    { id: "pain_story", label: "Pain questions asked" },
+    { id: "associated_symptoms", label: "Warning symptoms checked" },
+    { id: "observations_examination", label: "Vital signs and examination findings requested" },
+    { id: "response_to_plan", label: "David's concern about the ambulance answered" }
   ];
   return required.map((item) => ({ ...item, complete: state.revealed.includes(item.id) }));
 }
@@ -413,50 +446,52 @@ function renderLiveStation() {
     <section class="room room--station" aria-labelledby="station-title">
       <div class="station-grid">
         <div>
-          <p class="eyebrow">Station 001 · Live encounter</p>
-          <h1 id="station-title" style="font-size:clamp(1.85rem,5vw,3rem)">Speak first. Reveal what the patient says.</h1>
+          <p class="eyebrow">Station 001 · Timed practice</p>
+          <h1 id="station-title" style="font-size:clamp(1.85rem,5vw,3rem)">Speak first. Then reveal the response.</h1>
 
           <article class="patient-response" id="current-response" tabindex="-1" aria-live="polite" aria-atomic="true">
             <p class="speaker">${escapeHtml(current.speaker)}</p>
-            <p class="spoken-line">${escapeHtml(current.response_text)}</p>
+            <p class="spoken-line">${formatSpoken(current.response_text)}</p>
           </article>
-
-          <div class="ask-panel" tabindex="-1">
-            <h2>What will you explore now?</h2>
-            <p class="muted">Ask your questions aloud, then reveal the matching response.</p>
-            <div class="ask-grid">
-              ${actions.length ? actions.map((action) => `
-                <button class="ask-button" type="button" data-action="reveal" data-reveal-id="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`).join("") : `<p class="muted">All available responses have been revealed.</p>`}
-            </div>
-          </div>
 
           ${!state.plan_discussed ? `
             <div class="plan-gate">
-              <h2>When you reach management</h2>
-              <p>Explain your plan aloud. Then mark that you have discussed it to unlock David's response.</p>
+              <h2>Ready to explain your plan?</h2>
+              <p>Explain your concern and urgent plan to David. Then confirm that you have done it.</p>
               <button class="button" type="button" data-action="plan-gate">${escapeHtml(stationData.plan_gate.label)}</button>
-            </div>` : `
+            </div>` : ""}
+
+          <div class="ask-panel" tabindex="-1">
+            <h2>What will you ask next?</h2>
+            <p class="muted">Ask aloud, then choose the matching topic.</p>
+            <div class="ask-grid">
+              ${actions.length ? actions.map((action) => `
+                <button class="ask-button" type="button" data-action="reveal" data-reveal-id="${escapeHtml(action.id)}">${escapeHtml(action.label)}</button>`).join("") : `<p class="muted">You have opened every response.</p>`}
+            </div>
+          </div>
+
+          ${state.plan_discussed ? `
             <div class="finish-gate">
-              <h2>Before you finish</h2>
+              <h2>Check these parts before you finish</h2>
               <ul class="evidence-list">
                 ${completionItems.map((item) => `<li class="${item.complete ? "is-complete" : ""}"><span aria-hidden="true">${item.complete ? "✓" : "○"}</span>${escapeHtml(item.label)}</li>`).join("")}
               </ul>
               <div class="action-row">
                 <button class="button" type="button" data-action="finish-station" ${readyToFinish ? "" : "disabled"}>${escapeHtml(stationData.finish_action.label)}</button>
               </div>
-              ${readyToFinish ? "" : `<p class="small muted">Reveal the remaining task evidence above. This is not a score.</p>`}
-            </div>`}
+              ${readyToFinish ? "" : `<p class="small muted">Complete the remaining parts above. This is only a checklist, not a score.</p>`}
+            </div>` : ""}
         </div>
 
         <aside class="encounter-panel" aria-labelledby="encounter-title">
-          <p class="eyebrow">Revealed only</p>
-          <h2 id="encounter-title">Encounter log</h2>
+          <p class="eyebrow">Responses so far</p>
+          <h2 id="encounter-title">What David and the examiner have said</h2>
           <ol class="encounter-log">
             ${priorLog.length ? priorLog.map((item) => `
               <li>
                 <span class="log-label">${escapeHtml(item.action_label)} · ${escapeHtml(item.speaker)}</span>
-                <span>${escapeHtml(item.response_text)}</span>
-              </li>`).join("") : `<li class="muted">Previous responses will stay here after the next reveal.</li>`}
+                <span>${formatSpoken(item.response_text)}</span>
+              </li>`).join("") : `<li class="muted">Earlier responses will appear here.</li>`}
           </ol>
         </aside>
       </div>
@@ -468,8 +503,8 @@ function renderFinishedStation() {
     <section class="room room--reading" aria-labelledby="finished-title">
       <article class="locked-panel">
         <p class="eyebrow">Station 001 finished</p>
-        <h1 id="finished-title" style="font-size:clamp(2rem,6vw,3.4rem)">Your attempt is locked.</h1>
-        <p class="lead">The teaching is now available. Compare your run one stage at a time.</p>
+        <h1 id="finished-title" style="font-size:clamp(2rem,6vw,3.4rem)">Your Review is ready.</h1>
+        <p class="lead">Compare what you did with the Actual Run, one step at a time.</p>
         <div class="action-row" style="justify-content:center">
           <button class="button" type="button" data-room="review">Open Review</button>
           <button class="button button--secondary" type="button" data-room="journey">Open Journey</button>
@@ -483,25 +518,25 @@ function safeVersionStage() {
 }
 
 function renderLearningMode() {
-  if (!reviewData) return renderLoading("Preparing the model run...");
+  if (!reviewData) return renderLoading("Preparing the Actual Run...");
   const stage = safeVersionStage();
   const steps = stage.gold_run;
 
   if (state.learning_view === "actual_run") {
     return `
       <section class="learning-shell" aria-labelledby="learning-title">
-        <p class="eyebrow">Learning mode · Actual Run</p>
+        <p class="eyebrow">Learn · Actual Run</p>
         <h1 id="learning-title" style="font-size:clamp(2rem,6vw,3.65rem)">${escapeHtml(stage.title)}</h1>
-        <p class="lead">Read the whole encounter once. Speak only the turns marked <strong>You say</strong> or <strong>Ask examiner</strong>.</p>
-        ${stage.completeness_note ? `<div class="clinical-hold-note"><strong>Scope of this model</strong><p>${escapeHtml(stage.completeness_note)}</p></div>` : ""}
+        <p class="lead">Read the whole station once. Say the parts marked <strong>You say</strong>, <strong>You ask the examiner</strong>, or <strong>You hand over</strong>.</p>
+        ${stage.completeness_note ? `<div class="clinical-hold-note"><strong>About this example</strong><p>${escapeHtml(stage.completeness_note)}</p></div>` : ""}
         <details class="panel panel--quiet reading-plan">
-          <summary><strong>2-minute reading plan</strong></summary>
+          <summary><strong>What to notice in reading time</strong></summary>
           <ol>${stage.reading_time_plan.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>
         </details>
         ${renderActualRunScript(steps)}
         <div class="action-row">
-          <button class="button" type="button" data-action="learning-open-map">Open the step map</button>
-          <button class="button button--secondary" type="button" data-action="prepare-blind">Start Blind Station</button>
+          <button class="button" type="button" data-action="learning-open-map">See it step by step</button>
+          <button class="button button--secondary" type="button" data-action="prepare-blind">Start timed station</button>
           <button class="button button--quiet" type="button" data-room="library">Back to Library</button>
         </div>
       </section>`;
@@ -514,19 +549,19 @@ function renderLearningMode() {
 
   return `
     <section class="learning-shell" aria-labelledby="learning-title">
-      <p class="eyebrow">Learning mode · Step map ${index + 1} of ${steps.length}</p>
-      <h1 id="learning-title" style="font-size:clamp(2rem,6vw,3.65rem)">Learn the spoken road.</h1>
-      <p class="lead">Follow the role instruction, then use the short map to understand the turn.</p>
+      <p class="eyebrow">Step ${index + 1} of ${steps.length}</p>
+      <h1 id="learning-title" style="font-size:clamp(2rem,6vw,3.65rem)">See why each step happens.</h1>
+      <p class="lead">Read who speaks, say your part aloud, and notice why it matters.</p>
       <div class="progress-line" aria-label="Learning progress: ${progress} percent"><span style="width:${progress}%"></span></div>
 
       <article class="learning-card" id="learning-step" tabindex="-1">
         <div class="learning-card__spoken">
           <p class="role-label role-label--${escapeHtml(meta.role)}">${escapeHtml(meta.label)}</p>
           <p class="role-instruction learning-instruction">${escapeHtml(meta.instruction)}</p>
-          <p class="spoken-line">${escapeHtml(step.spoken)}</p>
+          <p class="spoken-line">${formatSpoken(step.spoken)}</p>
         </div>
         <div class="learning-card__logic">
-          <p class="logic-label">What this step is doing</p>
+          <p class="logic-label">Why this step matters</p>
           <p class="logic-copy">${escapeHtml(step.road_map)}</p>
         </div>
       </article>
@@ -535,15 +570,15 @@ function renderLearningMode() {
         <button class="button button--secondary" type="button" data-action="learning-prev" ${index === 0 ? "disabled" : ""}>Previous step</button>
         ${index < steps.length - 1
           ? `<button class="button" type="button" data-action="learning-next">Next step</button>`
-          : `<button class="button" type="button" data-action="prepare-blind">Start Blind Station</button>`}
-        <button class="button button--quiet" type="button" data-action="learning-show-run">View Actual Run</button>
+          : `<button class="button" type="button" data-action="prepare-blind">Start timed station</button>`}
+        <button class="button button--quiet" type="button" data-action="learning-show-run">Back to Actual Run</button>
       </div>
     </section>`;
 }
 
 function renderActualRunScript(steps) {
   return `
-    <div class="actual-run-script" aria-label="Role-correct model encounter">
+    <div class="actual-run-script" aria-label="Full spoken station example">
       ${steps.map((step, index) => {
         const meta = roleMeta(step);
         return `
@@ -552,7 +587,7 @@ function renderActualRunScript(steps) {
               <span class="role-label role-label--${escapeHtml(meta.role)}">${escapeHtml(meta.label)}</span>
               <span class="small muted">Turn ${index + 1}</span>
             </div>
-            <p>${escapeHtml(step.spoken)}</p>
+            <p>${formatSpoken(step.spoken)}</p>
           </article>`;
       }).join("")}
     </div>`;
@@ -571,13 +606,13 @@ function renderAttemptEvidence() {
   if (!attempt) return "";
   return `
     <details class="attempt-evidence panel panel--quiet" data-attempt-evidence ${state.review_stage === 0 ? "open" : ""}>
-      <summary><strong>Attempt evidence</strong> <span class="small muted">Not a score</span></summary>
+      <summary><strong>What you completed</strong> <span class="small muted">Checklist only</span></summary>
       <div class="evidence-metrics">
         <div><span>Time used</span><strong>${escapeHtml(formatDuration(attempt.elapsed_seconds))}</strong></div>
-        <div><span>Areas revealed</span><strong>${attempt.revealed_count} of ${attempt.available_reveals}</strong></div>
+        <div><span>Topics opened</span><strong>${attempt.revealed_count} of ${attempt.available_reveals}</strong></div>
         <div><span>Examiner findings</span><strong>${attempt.examiner_findings_requested ? "Requested" : "Not requested"}</strong></div>
-        <div><span>Patient pushback ${attempt.pushback_opened ? "opened" : "not opened"}</span><strong>${attempt.pushback_opened ? "Yes" : "No"}</strong></div>
-        <div><span>Finish</span><strong>${attempt.timed_out ? "Time limit" : "Manual"}</strong></div>
+        <div><span>David\'s concern</span><strong>${attempt.pushback_opened ? "Opened" : "Not opened"}</strong></div>
+        <div><span>How it ended</span><strong>${attempt.timed_out ? "Time finished" : "You finished"}</strong></div>
       </div>
     </details>`;
 }
@@ -585,13 +620,13 @@ function renderAttemptEvidence() {
 function reviewRequirements() {
   const drills = reviewData?.stages.find((stage) => stage.id === "what_if_paths")?.transfer_drills || [];
   return [
-    { id: "self_check", label: "Self-check and before-confidence recorded", complete: state.self_check_confirmed && Boolean(state.confidence_before) },
-    { id: "safety_mirror", label: "Safety Mirror selected", complete: Boolean(state.safety_mirror) },
-    { id: "reasoning", label: "Reasoning prediction compared", complete: state.reasoning_revealed },
-    { id: "actual_run", label: "Continuous model rehearsal completed", complete: state.actual_run_completed },
-    { id: "transfer", label: `Transfer drills completed (${Object.values(state.transfer_responses).filter(Boolean).length} of ${drills.length})`, complete: drills.length > 0 && drills.every((drill) => state.transfer_responses[drill.id] === drill.correct_choice_id) },
-    { id: "weak_turn", label: "One weak turn selected", complete: Boolean(state.weak_segment) },
-    { id: "confidence", label: "After-review confidence recorded", complete: Boolean(state.confidence_after) }
+    { id: "self_check", label: "Self-check and starting confidence chosen", complete: state.self_check_confirmed && Boolean(state.confidence_before) },
+    { id: "safety_mirror", label: "Safety check completed", complete: Boolean(state.safety_mirror) },
+    { id: "reasoning", label: "Plan change reviewed", complete: state.reasoning_revealed },
+    { id: "actual_run", label: "Actual Run practised from start to finish", complete: state.actual_run_completed },
+    { id: "transfer", label: `Changed-detail questions completed (${Object.values(state.transfer_responses).filter(Boolean).length} of ${drills.length})`, complete: drills.length > 0 && drills.every((drill) => state.transfer_responses[drill.id] === drill.correct_choice_id) },
+    { id: "weak_turn", label: "One practice area selected", complete: Boolean(state.weak_segment) },
+    { id: "confidence", label: "Final confidence chosen", complete: Boolean(state.confidence_after) }
   ];
 }
 
@@ -599,7 +634,7 @@ function renderMasteryGate() {
   const requirements = reviewRequirements();
   return `
     <div class="mastery-gate">
-      <h3>Review completion evidence</h3>
+      <h3>Before you finish Review</h3>
       <ul class="evidence-list">
         ${requirements.map((item) => `<li class="${item.complete ? "is-complete" : ""}"><span aria-hidden="true">${item.complete ? "✓" : "○"}</span>${escapeHtml(item.label)}</li>`).join("")}
       </ul>
@@ -616,8 +651,8 @@ function renderReview() {
   return `
     <section class="room" aria-labelledby="review-title">
       <p class="eyebrow">Review · Stage ${index + 1} of ${reviewData.stages.length}</p>
-      <h1 id="review-title" style="font-size:clamp(2.1rem,6vw,3.8rem)">Compare one turn at a time.</h1>
-      <p class="lead">Your station is finished. Compare it in order, then select one turn to practise.</p>
+      <h1 id="review-title" style="font-size:clamp(2.1rem,6vw,3.8rem)">Review one part at a time.</h1>
+      <p class="lead">Compare what you did with the Actual Run. Then choose one part to practise.</p>
       ${renderAttemptEvidence()}
 
       <div class="review-grid">
@@ -649,17 +684,17 @@ function renderReviewControls(stage, index) {
 
   if (stage.id === "safe_version" && !state.actual_run_started_at) {
     primaryAction = "actual-run-start";
-    primaryLabel = "Start continuous rehearsal";
+    primaryLabel = "Start full spoken practice";
   } else if (stage.id === "safe_version" && !state.actual_run_completed) {
     primaryAction = "actual-run-finish";
-    primaryLabel = "Finish continuous rehearsal";
+    primaryLabel = "Finish full spoken practice";
   } else if (stage.id === "safe_version" && state.gold_step < stage.gold_run.length - 1) {
-    primaryLabel = "Next mapped turn";
+    primaryLabel = "Next part";
   } else if (stage.id === "safe_version") {
-    primaryLabel = "Continue to thinking traps";
+    primaryLabel = "Continue to common mistakes";
   } else if (stage.id === "what_changed" && !state.reasoning_revealed) {
     primaryAction = "reveal-reasoning";
-    primaryLabel = "Reveal the reasoning map";
+    primaryLabel = "Show why the plan changed";
   }
 
   return `
@@ -673,9 +708,9 @@ function renderReviewLocked() {
   return `
     <section class="room room--reading">
       <article class="locked-panel">
-        <p class="eyebrow">Review locked</p>
+        <p class="eyebrow">Review not open yet</p>
         <h1 style="font-size:clamp(2rem,6vw,3.4rem)">Finish the station first.</h1>
-        <p>The model sequence, logic, and teaching stay hidden during Blind Station.</p>
+        <p>The Actual Run and explanations stay hidden during timed practice.</p>
         <div class="action-row" style="justify-content:center"><button class="button" type="button" data-room="station">Go to Station</button></div>
       </article>
     </section>`;
@@ -695,11 +730,11 @@ function renderReviewStage(stage) {
           </label>`).join("")}
       </div>
       <div class="confidence-before">
-        <h3>Before seeing the model, how familiar did the road feel?</h3>
+        <h3>Before seeing the Actual Run, how ready did you feel?</h3>
         <div class="confidence-scale" aria-label="Confidence before Review">
           ${confidenceStage.levels.map((level) => `<button type="button" data-action="confidence-before" data-confidence="${level.value}" aria-pressed="${state.confidence_before === level.value}">${level.value}</button>`).join("")}
         </div>
-        ${state.confidence_before ? `<p class="small muted">Recorded: ${state.confidence_before} of 5</p>` : `<p class="small muted">Choose 1 to 5. This is a comparison point, not a score.</p>`}
+        ${state.confidence_before ? `<p class="small muted">Selected: ${state.confidence_before} of 5</p>` : `<p class="small muted">Choose 1 to 5. This helps compare before and after. It is not a score.</p>`}
       </div>`;
   }
 
@@ -727,9 +762,9 @@ function renderReviewStage(stage) {
       <p>${escapeHtml(stage.intro)}</p>
       ${!state.reasoning_revealed ? `
         <div class="retrieval-prompt">
-          <p class="eyebrow">Predict before reveal</p>
+          <p class="eyebrow">Think before you look</p>
           <ol>${prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}</ol>
-          <p class="small muted">Answer aloud. No typing and no automatic score.</p>
+          <p class="small muted">Answer aloud, then show the explanation. There is no score.</p>
         </div>` : `
         <ol class="logic-list">
           ${stage.logic_moments.map((item) => `
@@ -740,7 +775,7 @@ function renderReviewStage(stage) {
             </li>`).join("")}
         </ol>
         <div class="selected-retry">
-          <strong>If you started on the indigestion road</strong>
+          <strong>If you first thought it was indigestion</strong>
           <p>${escapeHtml(stage.recovery_sentence)}</p>
         </div>`}`;
   }
@@ -754,8 +789,8 @@ function renderReviewStage(stage) {
         ${stage.traps.map((trap) => `
           <li class="trap-item">
             <h3>${escapeHtml(trap.label)}</h3>
-            <p class="muted">Drift: ${escapeHtml(trap.drift)}</p>
-            <p class="trap-reset"><strong>Safer turn:</strong> ${escapeHtml(trap.reset)}</p>
+            <p class="muted"><strong>What can happen:</strong> ${escapeHtml(trap.drift)}</p>
+            <p class="trap-reset"><strong>Do this instead:</strong> ${escapeHtml(trap.reset)}</p>
           </li>`).join("")}
       </ul>`;
   }
@@ -784,7 +819,7 @@ function renderReviewStage(stage) {
             <strong>${level.value}</strong><span>${escapeHtml(level.label)}</span>
           </button>`).join("")}
       </div>
-      ${state.confidence_after ? `<div class="selected-retry"><strong>Confidence recorded.</strong><p>Completion still depends on the evidence below.</p></div>` : ""}
+      ${state.confidence_after ? `<div class="selected-retry"><strong>Now check what is left below.</strong></div>` : ""}
       ${renderMasteryGate()}`;
   }
 
@@ -797,7 +832,7 @@ function renderTransferDrill(drill, index) {
   const attempted = (state.transfer_attempts[drill.id] || []).length > 0;
   return `
     <article class="transfer-drill">
-      <p class="eyebrow">Transfer ${index + 1} of 3</p>
+      <p class="eyebrow">Change ${index + 1} of 3</p>
       <h3>${escapeHtml(drill.scenario)}</h3>
       <p>${escapeHtml(drill.prompt)}</p>
       <div class="choice-list">
@@ -806,7 +841,7 @@ function renderTransferDrill(drill, index) {
             ${escapeHtml(choice.label)}
           </button>`).join("")}
       </div>
-      ${attempted ? `<div class="transfer-feedback ${correct ? "is-correct" : "is-retry"}" role="status"><strong>${correct ? "Safe transfer" : "Try the decision again"}</strong><p>${escapeHtml(correct ? drill.feedback_correct : drill.feedback_retry)}</p></div>` : ""}
+      ${attempted ? `<div class="transfer-feedback ${correct ? "is-correct" : "is-retry"}" role="status"><strong>${correct ? "This follows the safe plan" : "Look again"}</strong><p>${escapeHtml(correct ? drill.feedback_correct : drill.feedback_retry)}</p></div>` : ""}
     </article>`;
 }
 
@@ -816,12 +851,12 @@ function renderGoldRun(stage) {
     return `
       <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
       <p>${escapeHtml(stage.intro)}</p>
-      ${stage.completeness_note ? `<div class="clinical-hold-note"><strong>Scope of this model</strong><p>${escapeHtml(stage.completeness_note)}</p></div>` : ""}
+      ${stage.completeness_note ? `<div class="clinical-hold-note"><strong>About this example</strong><p>${escapeHtml(stage.completeness_note)}</p></div>` : ""}
       <div class="run-timer" aria-live="off">
-        <span>Continuous rehearsal</span>
+        <span>Full spoken practice</span>
         <strong id="model-run-clock">${formatDuration(elapsed)}</strong>
       </div>
-      <p class="small muted">Start the timer, then move through the encounter without pausing. Speak only candidate and examiner-request turns.</p>
+      <p class="small muted">Start the timer and continue without pausing. Say the parts marked You say, You ask the examiner, and You hand over.</p>
       ${renderActualRunScript(stage.gold_run)}
       ${stage.portable_station_spine ? renderStationSpine(stage.portable_station_spine) : ""}`;
   }
@@ -831,16 +866,16 @@ function renderGoldRun(stage) {
   const meta = roleMeta(step);
   return `
     <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
-    <p>Continuous rehearsal recorded in ${formatDuration(state.actual_run_elapsed_seconds)}. Now map one turn at a time.</p>
+    <p>You completed the full run in ${formatDuration(state.actual_run_elapsed_seconds)}. Now review one part at a time.</p>
     <div class="progress-line" aria-label="Model sequence step ${index + 1} of ${stage.gold_run.length}"><span style="width:${Math.round(((index + 1) / stage.gold_run.length) * 100)}%"></span></div>
     <article class="learning-card panel--quiet">
       <div class="learning-card__spoken">
         <p class="role-label role-label--${escapeHtml(meta.role)}">${escapeHtml(meta.label)} · Turn ${index + 1}</p>
         <p class="role-instruction learning-instruction">${escapeHtml(meta.instruction)}</p>
-        <p class="spoken-line">${escapeHtml(step.spoken)}</p>
+        <p class="spoken-line">${formatSpoken(step.spoken)}</p>
       </div>
       <div class="learning-card__logic">
-        <p class="logic-label">What this step is doing</p>
+        <p class="logic-label">Why this step matters</p>
         <p class="logic-copy">${escapeHtml(step.road_map)}</p>
       </div>
     </article>`;
@@ -849,7 +884,7 @@ function renderGoldRun(stage) {
 function renderStationSpine(items) {
   return `
     <details class="station-spine panel panel--quiet">
-      <summary><strong>Portable station spine</strong></summary>
+      <summary><strong>Quick station order</strong></summary>
       <ol>${items.map((item) => `<li>${escapeHtml(typeof item === "string" ? item : item.label || item.step)}</li>`).join("")}</ol>
     </details>`;
 }
@@ -860,7 +895,7 @@ function renderTryAgain(stage) {
     <h2 id="review-stage-title">${escapeHtml(stage.title)}</h2>
     <p>${escapeHtml(stage.intro)}</p>
     <details class="practice-ladder panel panel--quiet">
-      <summary><strong>Practice Ladder</strong></summary>
+      <summary><strong>Practice steps</strong></summary>
       <ol>${stage.practice_ladder.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>
     </details>
     <div class="retry-list">
@@ -874,18 +909,18 @@ function renderTryAgain(stage) {
       <div class="selected-retry">
         <strong>Selected: ${escapeHtml(selected.label)}</strong>
         <p>${escapeHtml(selected.practice_task)}</p>
-        <button class="button" type="button" data-action="start-guided">Open guided retry</button>
+        <button class="button" type="button" data-action="start-guided">Practise this part</button>
       </div>` : ""}`;
 }
 
 function renderGuidedRetry() {
-  if (!reviewData) return renderLoading("Preparing your guided retry...");
+  if (!reviewData) return renderLoading("Preparing your practice...");
   const stage = reviewData.stages.find((item) => item.id === "try_again");
   const option = stage.retry_options.find((item) => item.id === state.weak_segment) || stage.retry_options[0];
 
   return `
     <section class="room room--reading" aria-labelledby="guided-title">
-      <p class="eyebrow">Guided retry · One weak turn</p>
+      <p class="eyebrow">Guided practice · One part</p>
       <h1 id="guided-title" style="font-size:clamp(2rem,6vw,3.6rem)">${escapeHtml(option.label)}</h1>
       <article class="panel">
         <h2>Speak this task aloud</h2>
@@ -897,13 +932,13 @@ function renderGuidedRetry() {
           </div>` : `
           <div class="action-row"><button class="button button--secondary" type="button" data-action="show-hint">Show one Hint</button></div>`}
         ${state.guided_model_visible ? `
-          <div class="model-line" tabindex="-1"><strong>Model line</strong><br>${escapeHtml(option.model_line)}</div>` : `
-          <div class="action-row"><button class="button button--quiet" type="button" data-action="show-model">Reveal the model line</button></div>`}
+          <div class="model-line" tabindex="-1"><strong>Example wording</strong><br>${escapeHtml(option.model_line)}</div>` : `
+          <div class="action-row"><button class="button button--quiet" type="button" data-action="show-model">Show example wording</button></div>`}
       </article>
       <div class="action-row">
         ${!state.guided_retry_completed
-          ? `<button class="button" type="button" data-action="complete-guided">I practised this turn</button>`
-          : `<button class="button" type="button" data-action="prepare-blind">Try Blind Station</button>`}
+          ? `<button class="button" type="button" data-action="complete-guided">I practised this part</button>`
+          : `<button class="button" type="button" data-action="prepare-blind">Start timed station</button>`}
         <button class="button button--secondary" type="button" data-room="review">Back to Review</button>
       </div>
     </section>`;
@@ -911,14 +946,14 @@ function renderGuidedRetry() {
 
 function journeyRecommendation() {
   const attempt = latestAttempt();
-  if (state.station_started && !state.attempt_finished) return { title: "Continue the live station", detail: "Finish the attempt before opening Review.", cadence: "Now", room: "station" };
-  if (!state.attempt_finished) return { title: "Complete a blind attempt", detail: "Run Station 001 before opening Review.", cadence: "Now", action: "prepare-blind" };
-  if (state.review_status !== "completed") return { title: "Finish the staged Review", detail: "Complete the evidence in order. Confidence alone cannot finish Review.", cadence: "Now", room: "review" };
-  if (state.weak_segment && state.weak_segment !== "full_run" && !state.guided_retry_completed) return { title: "Practise the selected weak turn", button_label: "Practise weak turn", detail: "Speak that segment with one Hint, then return blind.", cadence: "Today", action: "start-guided" };
-  if (state.attempt_history.length < 2) return { title: "Prove it in a second blind run", detail: "Use the weak-turn practice, then repeat the full station without the model.", cadence: "Today", action: "prepare-blind" };
-  if (!attempt?.examiner_findings_requested || !attempt?.pushback_opened || attempt.elapsed_seconds < MIN_FULL_SPOKEN_RUN_SECONDS) return { title: "Repeat at a full spoken pace", detail: "The latest interaction record does not yet show a sustained run with examiner findings and patient pushback.", cadence: "Today", action: "prepare-blind" };
-  if ((state.confidence_after || 0) < 4 || state.safety_mirror !== "likely_safe") return { title: "Run one targeted retry", detail: "Confidence and safety evidence do not yet support spacing.", cadence: "Next day", action: state.weak_segment && state.weak_segment !== "full_run" ? "start-guided" : "prepare-blind" };
-  return { title: "Revisit before it fades", detail: "Repeat the station blind and compare the objective attempt evidence.", cadence: "One week", action: "prepare-blind" };
+  if (state.station_started && !state.attempt_finished) return { title: "Continue the timed station", detail: "Finish the station before opening Review.", cadence: "Now", room: "station" };
+  if (!state.attempt_finished) return { title: "Try the station without prompts", detail: "Complete Station 001 before opening Review.", cadence: "Now", action: "prepare-blind" };
+  if (state.review_status !== "completed") return { title: "Finish Review", detail: "Complete each part in order, then choose what to practise.", cadence: "Now", room: "review" };
+  if (state.weak_segment && state.weak_segment !== "full_run" && !state.guided_retry_completed) return { title: "Practise the part you selected", button_label: "Practise this part", detail: "Use one Hint, say it aloud, then try the station again.", cadence: "Today", action: "start-guided" };
+  if (state.attempt_history.length < 2) return { title: "Try a second timed station", detail: "Practise the selected part, then repeat the whole station without the example.", cadence: "Today", action: "prepare-blind" };
+  if (!attempt?.examiner_findings_requested || !attempt?.pushback_opened || attempt.elapsed_seconds < MIN_FULL_SPOKEN_RUN_SECONDS) return { title: "Repeat the whole station aloud", detail: "The last station was short or did not include examiner findings and David's concern.", cadence: "Today", action: "prepare-blind" };
+  if ((state.confidence_after || 0) < 4 || state.safety_mirror !== "likely_safe") return { title: "Practise one part again", detail: "Your self-check shows that one more practice would help.", cadence: "Next day", action: state.weak_segment && state.weak_segment !== "full_run" ? "start-guided" : "prepare-blind" };
+  return { title: "Practise again in one week", detail: "Repeat the station without the example, then compare what you completed.", cadence: "One week", action: "prepare-blind" };
 }
 
 function renderJourney() {
@@ -931,17 +966,18 @@ function renderJourney() {
     ["Pattern", "Dangerous chest pain"],
     ["Station", "001"],
     ["Attempt", attemptDone ? "Finished" : state.station_started ? "In progress" : "Not started"],
-    ["Review", reviewDone ? "Completed" : state.review_unlocked ? "Ready" : "Locked"],
+    ["Review", reviewDone ? "Completed" : state.review_unlocked ? "Ready" : "Not ready"],
     ["Next", recommendation.cadence]
   ];
-  const weakLabel = state.weak_segment ? state.weak_segment.replaceAll("_", " ") : "Not selected";
+  const selectedPractice = reviewData?.stages.find((item) => item.id === "try_again")?.retry_options.find((item) => item.id === state.weak_segment);
+  const weakLabel = selectedPractice?.label || "Not selected";
   const confidenceChange = state.confidence_before && state.confidence_after ? state.confidence_after - state.confidence_before : null;
 
   return `
     <section class="room" aria-labelledby="journey-title">
       <p class="eyebrow">Journey</p>
-      <h1 id="journey-title">Know where you are. Take one next turn.</h1>
-      <p class="lead">Journey remembers the station, your self-check, and the next useful practice move.</p>
+      <h1 id="journey-title">See what you have done. Choose what to practise next.</h1>
+      <p class="lead">This page keeps your station results, Review choices, and next practice.</p>
 
       <div class="journey-path" aria-label="Current pathway">
         ${nodes.map((node, index) => `
@@ -953,7 +989,7 @@ function renderJourney() {
 
       <div class="journey-grid">
         <article class="journey-card">
-          <p class="eyebrow">Next useful move · ${escapeHtml(recommendation.cadence)}</p>
+          <p class="eyebrow">Next step · ${escapeHtml(recommendation.cadence)}</p>
           <h2>${escapeHtml(recommendation.title)}</h2>
           <p>${escapeHtml(recommendation.detail)}</p>
           <div class="action-row">
@@ -962,29 +998,29 @@ function renderJourney() {
         </article>
 
         <article class="journey-card">
-          <h2>Your current record</h2>
-          <div class="metric"><span>Attempt</span><strong>${attemptDone ? "Finished" : state.station_started ? "In progress" : "Not started"}</strong></div>
-          <div class="metric"><span>Review</span><strong>${reviewDone ? "Completed" : state.review_unlocked ? "Ready" : "Locked"}</strong></div>
-          <div class="metric"><span>Weak turn</span><strong>${escapeHtml(weakLabel)}</strong></div>
-          <div class="metric"><span>Confidence before Review</span><strong>${state.confidence_before ? `${state.confidence_before} of 5` : "Not recorded"}</strong></div>
-          <div class="metric"><span>Confidence after Review</span><strong>${state.confidence_after ? `${state.confidence_after} of 5` : "Not recorded"}</strong></div>
+          <h2>Your practice so far</h2>
+          <div class="metric"><span>Station</span><strong>${attemptDone ? "Finished" : state.station_started ? "In progress" : "Not started"}</strong></div>
+          <div class="metric"><span>Review</span><strong>${reviewDone ? "Completed" : state.review_unlocked ? "Ready" : "Not ready"}</strong></div>
+          <div class="metric"><span>Practice area</span><strong>${escapeHtml(weakLabel)}</strong></div>
+          <div class="metric"><span>Confidence before Review</span><strong>${state.confidence_before ? `${state.confidence_before} of 5` : "Not chosen"}</strong></div>
+          <div class="metric"><span>Confidence after Review</span><strong>${state.confidence_after ? `${state.confidence_after} of 5` : "Not chosen"}</strong></div>
           <div class="metric"><span>Confidence change</span><strong>${confidenceChange === null ? "Not available" : `${confidenceChange >= 0 ? "+" : ""}${confidenceChange}`}</strong></div>
         </article>
       </div>
 
       <section class="attempt-history" data-attempt-history aria-labelledby="attempt-history-title">
-        <h2 id="attempt-history-title">Attempt history</h2>
-        <p class="muted">Observable interaction evidence only. It is not a clinical score.</p>
+        <h2 id="attempt-history-title">Your station attempts</h2>
+        <p class="muted">This shows what you opened and how long you practised. It does not score your clinical skill.</p>
         <div class="attempt-records">
           ${state.attempt_history.length ? state.attempt_history.slice().reverse().map((attempt) => `
             <article class="attempt-record" data-attempt-record>
               <strong>Attempt ${attempt.number}</strong>
               <span>${formatDuration(attempt.elapsed_seconds)} used</span>
-              <span>${attempt.revealed_count} of ${attempt.available_reveals} areas</span>
-              <span>Examiner: ${attempt.examiner_findings_requested ? "requested" : "missed"}</span>
-              <span>Pushback: ${attempt.pushback_opened ? "explored" : "missed"}</span>
-              <span>${attempt.timed_out ? "Time limit reached" : "Finished manually"}</span>
-            </article>`).join("") : `<p>No blind attempt recorded yet.</p>`}
+              <span>${attempt.revealed_count} of ${attempt.available_reveals} topics opened</span>
+              <span>Examiner findings: ${attempt.examiner_findings_requested ? "asked" : "not asked"}</span>
+              <span>David's concern: ${attempt.pushback_opened ? "opened" : "not opened"}</span>
+              <span>${attempt.timed_out ? "Time finished" : "You finished"}</span>
+            </article>`).join("") : `<p>No timed station completed yet.</p>`}
         </div>
       </section>
 
@@ -1066,7 +1102,7 @@ function startStation() {
   }];
   saveState();
   render({ focusSelector: "#current-response" });
-  announce("Station started. Teaching is hidden.");
+  announce("Station started. The Actual Run and Review are hidden.");
 }
 
 function revealAction(id) {
@@ -1092,9 +1128,9 @@ function markPlanDiscussed() {
   state.encounter_log.push({
     order: state.encounter_log.length + 1,
     event_type: "plan_gate",
-    action_label: "Plan discussed",
+    action_label: "Plan explained",
     speaker: "You",
-    response_text: "Management plan discussed with David.",
+    response_text: "You explained your concern and urgent plan to David.",
     unlock_source: "learner_action"
   });
   saveState();
@@ -1105,7 +1141,7 @@ function markPlanDiscussed() {
 async function finishStation(reason = "manual") {
   if (state.attempt_finished) return;
   if (reason === "manual" && !canFinishStation()) {
-    announce("Complete the remaining station task evidence before Finish.");
+    announce("Complete the remaining parts above before you finish.");
     return;
   }
   const finishedAt = Date.now();
@@ -1140,7 +1176,7 @@ async function finishStation(reason = "manual") {
   saveState();
   await loadReview();
   setRoom("review");
-  announce(reason === "time_limit" ? "Time is up. Station locked and Review opened." : "Station finished. Review is now open.");
+  announce(reason === "time_limit" ? "Time is up. The station is finished and Review is open." : "Station finished. Review is now open.");
 }
 
 function selectWeakSegment(id) {
@@ -1167,7 +1203,7 @@ function completeGuidedRetry() {
   state.guided_retry_count += 1;
   saveState();
   render({ focus: true, resetScroll: false, focusSelector: "[data-action='prepare-blind']" });
-  announce("Weak-turn practice recorded. Next, prove it in Blind Station.");
+  announce("You practised this part. Now try the timed station.");
 }
 
 function markReviewStageComplete(id) {
@@ -1181,13 +1217,13 @@ function allTransferDrillsComplete() {
 }
 
 function stageAdvanceBlock(stage) {
-  if (stage.id === "self_check" && !state.confidence_before) return "Record your before-Review confidence first.";
-  if (stage.id === "safety_mirror" && !state.safety_mirror) return "Choose the Safety Mirror statement closest to your run.";
-  if (stage.id === "what_changed" && !state.reasoning_revealed) return "Answer the three prompts aloud, then reveal the reasoning map.";
-  if (stage.id === "safe_version" && !state.actual_run_completed) return "Complete one continuous model rehearsal first.";
-  if (stage.id === "what_if_paths" && !allTransferDrillsComplete()) return "Complete all three transfer decisions before continuing.";
-  if (stage.id === "try_again" && !state.weak_segment) return "Select one weak turn to practise.";
-  if (stage.id === "confidence_after_review" && !state.confidence_after) return "Record your after-Review confidence first.";
+  if (stage.id === "self_check" && !state.confidence_before) return "Choose how ready you felt before seeing the Actual Run.";
+  if (stage.id === "safety_mirror" && !state.safety_mirror) return "Choose the safety statement that best matches what you did.";
+  if (stage.id === "what_changed" && !state.reasoning_revealed) return "Answer the questions aloud, then show why the plan changed.";
+  if (stage.id === "safe_version" && !state.actual_run_completed) return "Practise the Actual Run from start to finish first.";
+  if (stage.id === "what_if_paths" && !allTransferDrillsComplete()) return "Answer all three changed-detail questions before continuing.";
+  if (stage.id === "try_again" && !state.weak_segment) return "Choose one part to practise.";
+  if (stage.id === "confidence_after_review" && !state.confidence_after) return "Choose how ready you feel now.";
   return null;
 }
 
@@ -1220,7 +1256,7 @@ function completeReview() {
   }
   saveState();
   render({ focus: true, resetScroll: false, focusSelector: "#review-stage-panel", scrollTarget: "#review-stage-panel" });
-  announce("Review evidence complete. Journey has the next practice move.");
+  announce("Review finished. Your next practice is in Journey.");
 }
 
 function advanceReview() {
@@ -1271,7 +1307,7 @@ function startActualRun() {
   state.actual_run_completed = false;
   saveState();
   render({ focus: true, resetScroll: false, focusSelector: "#review-stage-panel" });
-  announce("Continuous rehearsal timer started.");
+  announce("Full spoken practice started.");
 }
 
 function finishActualRun() {
@@ -1281,7 +1317,7 @@ function finishActualRun() {
   state.gold_step = 0;
   saveState();
   render({ focus: true, resetScroll: false, focusSelector: "#review-stage-panel", scrollTarget: "#review-stage-panel" });
-  announce("Continuous rehearsal recorded. Map the turns next.");
+  announce("Full spoken practice finished. Review each part next.");
 }
 
 function chooseTransfer(drillId, choiceId) {
@@ -1300,6 +1336,7 @@ function chooseTransfer(drillId, choiceId) {
 main.addEventListener("click", async (event) => {
   const roomButton = event.target.closest("[data-room]");
   if (roomButton) {
+    clearAnnouncement();
     const room = roomButton.dataset.room;
     if (room === "review" && state.review_unlocked) await loadReview();
     setRoom(room);
@@ -1308,6 +1345,7 @@ main.addEventListener("click", async (event) => {
 
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  clearAnnouncement();
   const action = actionButton.dataset.action;
 
   if (action === "start-learning") await startLearning();
@@ -1377,6 +1415,7 @@ main.addEventListener("click", async (event) => {
 main.addEventListener("change", (event) => {
   const checkbox = event.target.closest("[data-self-check]");
   if (!checkbox) return;
+  clearAnnouncement();
   const id = checkbox.dataset.selfCheck;
   state.self_check = checkbox.checked
     ? [...new Set([...state.self_check, id])]
@@ -1387,12 +1426,14 @@ main.addEventListener("change", (event) => {
 primaryNav.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-room]");
   if (!button) return;
+  clearAnnouncement();
   const room = button.dataset.room;
   if (room === "review" && state.review_unlocked) await loadReview();
   setRoom(room);
 });
 
 window.addEventListener("popstate", async () => {
+  clearAnnouncement();
   const room = currentHashRoom();
   if (room === "review" && state.review_unlocked) await loadReview();
   setRoom(room, { replace: true });
