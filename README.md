@@ -2,7 +2,7 @@
 
 Case 001 end-to-end mastery-loop site built from Clinical Pathway Authority Pack v2.
 
-Technical site URL after the main-branch Pages workflow completes: `https://ushanayalda.github.io/Clinical-Pathway-IV/`
+Live technical site: `https://ushanayalda.github.io/Clinical-Pathway-IV/`
 
 ## Current boundary
 
@@ -44,7 +44,8 @@ The test command runs 65 contract checks and 7 browser scenarios covering staged
 ## Repository automation
 
 - Pull requests and main-branch updates run the complete validation suite.
-- Main-branch updates deploy only `index.html`, `assets/`, and `data/` to GitHub Pages.
+- The live site is isolated on the `gh-pages` branch.
+- Only `.nojekyll`, `index.html`, `assets/`, and `data/` are published.
 - Technical deployment does not change the clinical, source, medication, audio, or release HOLD states.
 
 ## Review evidence
