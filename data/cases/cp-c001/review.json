@@ -15,39 +15,30 @@
   "stages": [
     {
       "id": "self_check",
-      "short_label": "Self-check",
-      "title": "What did you do?",
-      "intro": "Tick the parts you remember doing. This is your own checklist, not a score.",
-      "items": [
-        {"id": "focused_pain", "label": "I asked clearly about the pain."},
-        {"id": "associated_risk", "label": "I checked for warning symptoms."},
-        {"id": "act_before_proof", "label": "I called an ambulance before taking a longer history or waiting for tests."},
-        {"id": "examiner_request", "label": "I asked the examiner for David's vital signs and relevant examination findings."},
-        {"id": "focused_background", "label": "I asked about heart risk factors while the ambulance was coming."},
-        {"id": "ambulance_no_drive", "label": "I told David not to drive."},
-        {"id": "rest_monitor_handover", "label": "I kept David seated, monitored him, and prepared a handover."}
-      ]
+      "short_label": "Your attempt",
+      "title": "What happened in your run?",
+      "intro": "Start with what the site recorded. Then choose how the station felt."
     },
     {
       "id": "safety_mirror",
       "short_label": "Safety check",
       "title": "How safe was your approach?",
-      "intro": "Choose the statement that best matches what you did. This is a guide, not an exam result.",
+      "intro": "Choose the closest match. Focus on urgent action and safe transport.",
       "options": [
         {
           "id": "likely_safe",
           "label": "Likely safe",
-          "description": "You recognised the warning signs. You called an ambulance before taking a long history or waiting for clinic tests. You asked for the vital signs and examination findings, told David not to drive, and continued caring for him."
+          "description": "You called an ambulance promptly and kept David from driving."
         },
         {
           "id": "borderline",
           "label": "Needs improvement",
-          "description": "You recognised that David might be seriously unwell, but the ambulance was delayed or unclear. You may also have missed important examiner findings or forgotten to tell David not to drive."
+          "description": "You recognised the danger, but the urgent plan or no-driving advice was delayed or unclear."
         },
         {
           "id": "likely_unsafe",
           "label": "Unsafe",
-          "description": "You treated the pain as indigestion, waited for clinic tests before calling an ambulance, or allowed David to drive."
+          "description": "You waited for proof before acting or allowed David to drive."
         }
       ]
     },
@@ -55,46 +46,28 @@
       "id": "what_changed",
       "short_label": "Why it changed",
       "title": "Why the plan changed",
-      "intro": "David first calls it indigestion. Each new detail makes a heart emergency more likely.",
+      "intro": "Three moments change what you need to do.",
       "logic_moments": [
         {
-          "step": "Opening",
-          "signal": "The pain started after lunch, and David calls it indigestion",
-          "road_map": "Indigestion is possible. Chest tightness can also be serious, so check for warning signs first."
+          "step": "1. Do not close the case early",
+          "signal": "David calls it indigestion, but he also describes chest tightness",
+          "road_map": "His label is only one possibility. Ask focused pain and warning-symptom questions."
         },
         {
-          "step": "Pain questions",
+          "step": "2. The pattern becomes dangerous",
           "signal": "The pain started with exertion. It is central, heavy, severe, and not settling",
-          "road_map": "These features raise concern about a serious heart problem."
+          "road_map": "Arm or jaw spread, sweating, nausea and breathlessness add to the concern. Call an ambulance now."
         },
         {
-          "step": "More warning signs",
-          "signal": "The pain spreads to the arm and jaw. David is sweaty, nauseated, and short of breath",
-          "road_map": "David now has several warning signs of a heart emergency. Call an ambulance now."
-        },
-        {
-          "step": "Urgent plan",
-          "signal": "Several warning signs are already present",
-          "road_map": "Arrange an ambulance now. Keep checking David while help is coming."
-        },
-        {
-          "step": "While help is coming",
-          "signal": "Vital signs, examination findings, and heart risk factors are still useful",
-          "road_map": "Ask the examiner for the findings. Ask only the questions that will help the handover."
-        },
-        {
-          "step": "David wants to drive",
+          "step": "3. Protect David while help comes",
           "signal": "David asks if he can drive himself",
-          "road_map": "Tell him why driving is unsafe. Keep him seated and wait for the ambulance."
+          "road_map": "Explain that he could worsen suddenly. Keep him seated, continue checking him and prepare the handover."
         }
       ],
       "retrieval_prompts": [
-        "David called it indigestion. What serious cause must you still consider?",
-        "Which details made this an emergency?",
-        "Do you have enough warning signs to call an ambulance now?",
-        "Why must David not drive?",
-        "What vital signs and examination findings should you ask the examiner for?",
-        "What information should you include in the handover?"
+        "Why should David's word 'indigestion' not settle the diagnosis?",
+        "Which details mean you should call an ambulance now?",
+        "Why is driving unsafe while these symptoms continue?"
       ],
       "recovery_sentence": "At first, indigestion was possible because the pain started after lunch. But the pain is spreading to your arm and jaw, you are sweaty and short of breath, and the pain is not settling. This could be a serious heart problem, so I am calling an ambulance now."
     },
@@ -105,13 +78,31 @@
       "intro": "Say the parts marked You say, You ask the examiner, or You hand over. Read David's and the examiner's replies. Do each Action to take.",
       "completeness_note": "This example covers the four station tasks. It is not a full treatment guide. Medication is outside this station example.",
       "reading_time_plan": [
-        "Read the four tasks.",
-        "Notice that you are in general practice.",
-        "Do not decide it is indigestion just because it started after lunch.",
-        "Ask when the pain started, what David was doing, where it is, what it feels like, how severe it is, where it spreads, and whether it is easing.",
-        "When you hear several warning signs, call an ambulance. Do not wait for more history or clinic tests.",
-        "While the ambulance is coming, ask the examiner for vital signs and relevant examination findings.",
-        "Ask about heart risk factors and prepare a short handover."
+        "Read the four tasks and notice that you are in general practice.",
+        "Check the pain and warning symptoms. Act as soon as the dangerous pattern is clear.",
+        "While help is coming, keep David safe, ask for findings and prepare the handover."
+      ],
+      "learning_moments": [
+        {
+          "signal": "David says 'indigestion', but also describes chest tightness.",
+          "action": "Do not agree too early. Check the pain and warning symptoms.",
+          "reason": "A patient's first explanation can be wrong."
+        },
+        {
+          "signal": "Heavy central pain started with exertion and is not settling.",
+          "action": "Move quickly through the remaining warning symptoms.",
+          "reason": "The pattern is becoming more concerning."
+        },
+        {
+          "signal": "The pain spreads, and David is sweaty, sick and short of breath.",
+          "action": "Call an ambulance now. Do not wait for clinic tests.",
+          "reason": "You already have enough warning signs to act."
+        },
+        {
+          "signal": "David wants to drive himself.",
+          "action": "Explain the risk, keep him seated and prepare the handover.",
+          "reason": "He could worsen suddenly on the way."
+        }
       ],
       "portable_station_spine": [
         {"id": "open", "label": "Open and confirm identity", "candidate_job": "Introduce yourself, confirm David's identity, and ask about the chest discomfort."},
@@ -316,7 +307,7 @@
     {
       "id": "thinking_traps",
       "short_label": "Common mistakes",
-      "title": "Three common mistakes",
+      "title": "One mistake to watch",
       "traps": [
         {
           "label": "Believing the first explanation",
@@ -340,16 +331,6 @@
       "short_label": "Changed details",
       "title": "What if the details change?",
       "intro": "Choose what you would do before reading the explanation.",
-      "paths": [
-        {
-          "question": "What if an early ECG looks reassuring?",
-          "answer": "One early ECG does not make ongoing high-risk chest pain safe to manage in the clinic. Continue urgent hospital care."
-        },
-        {
-          "question": "What if David keeps asking to drive?",
-          "answer": "Let David know you understand the inconvenience. Explain that his symptoms could worsen suddenly. Keep him seated and repeat that an ambulance is the safest option."
-        }
-      ],
       "transfer_drills": [
         {
           "id": "patient_label_changes",
@@ -396,17 +377,7 @@
       "id": "try_again",
       "short_label": "Practise",
       "title": "Choose one part to practise",
-      "intro": "Choose the part you want to make easier. Practise it once, then repeat the full station.",
-      "practice_ladder": [
-        "Read the Actual Run once.",
-        "Notice why each step happens.",
-        "Say your own lines aloud.",
-        "Try again using only short cue words.",
-        "Hide the example and run the station.",
-        "Practise how you would answer David's concern.",
-        "Repeat the part that felt difficult.",
-        "Practise the station again later."
-      ],
+      "intro": "Choose one part. It will open immediately for a short spoken practice.",
       "retry_options": [
         {
           "id": "danger_explanation",
@@ -428,13 +399,6 @@
           "practice_task": "Give a handover in under 45 seconds. Include who David is, what happened, warning signs, risk factors, vital signs, your concern, and what you have done.",
           "hint": "Use this order: who he is, what happened, warning signs, vital signs, your concern, and your actions.",
           "model_line": "David is 58 and has had 45 minutes of heavy central chest tightness that started with exertion. It spreads to his arm and jaw, and he is sweaty, nauseated, and short of breath. I am concerned about a serious cardiac cause and have called an ambulance."
-        },
-        {
-          "id": "full_run",
-          "label": "Practise the whole station",
-          "practice_task": "Return to the timed station and complete it without seeing the example.",
-          "hint": "Introduction, pain, warning signs, ambulance, no driving, examiner findings, heart risk factors, handover.",
-          "model_line": "If you get stuck, look at the Hints once. Then hide them and start again."
         }
       ]
     },
@@ -445,10 +409,8 @@
       "intro": "Choose the statement that fits best. The site will suggest what to practise next.",
       "levels": [
         {"value": 1, "label": "I still need the Actual Run beside me."},
-        {"value": 2, "label": "I can start, but I may lose the order."},
-        {"value": 3, "label": "I can spot the danger and call an ambulance."},
-        {"value": 4, "label": "I can explain the risk and follow the right order."},
-        {"value": 5, "label": "I can do the whole station without the example."}
+        {"value": 2, "label": "I can spot the danger, but I may lose the order."},
+        {"value": 3, "label": "I can run the station without the example."}
       ]
     }
   ]

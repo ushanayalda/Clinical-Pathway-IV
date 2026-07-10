@@ -13,17 +13,17 @@ Live technical site: `https://ushanayalda.github.io/Clinical-Pathway-IV/`
 - Release status: HOLD
 - Case 002: blocked
 
-This iteration proves the five-room experience: Home, Library, Station, Review, and Journey. It includes a role-correct Actual Run, timed practice without prompts, sequential Review, guided practice, retained attempt history, and three changed-detail questions without voice scoring, typing, automatic pass/fail, or gamification.
+This iteration proves the five-room experience: Home, Library, Station, Review, and Journey. It includes a role-correct Actual Run, a four-turn reasoning map, timed practice without prompts, compact sequential Review, direct guided practice, retained attempt history, and rotating changed-detail questions without voice scoring, typing, automatic pass/fail, or gamification.
 
 The mastery loop is:
 
 1. Read for two minutes.
 2. Perform an eight-minute timed attempt without prompts.
-3. Check what was completed and compare the attempt with the Actual Run.
-4. Practise the full spoken station and review why each step matters.
-5. Apply the safety rule to three changed situations.
-6. Select and practise one difficult part.
-7. Repeat the full station and retain both attempts in Journey.
+3. Check the recorded attempt and make one safety judgement.
+4. Review three clinical turning points. See the Actual Run only if it was not already studied.
+5. Apply the safety rule to two changed situations, rotated across attempts.
+6. Select one difficult part and practise it immediately.
+7. Use Journey for one next action and optional past-attempt details.
 
 ## Run locally
 
@@ -39,7 +39,7 @@ Open `http://127.0.0.1:4173`.
 npm test
 ```
 
-The test command runs 74 contract checks and 7 browser scenarios. They cover learner language, spoken-line length, staged Review integrity, timing, persistence, role correctness, changed situations, mobile, focus, keyboard, and hidden-content boundaries.
+The test command runs 78 contract checks and 7 browser scenarios. They cover learner language, spoken-line length, staged Review integrity, de-duplication, timing, persistence, role correctness, changed situations, mobile, focus, keyboard, and hidden-content boundaries.
 
 ## Repository automation
 
