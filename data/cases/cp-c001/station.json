@@ -4,7 +4,7 @@
   "station_card": {
     "station_number": "001",
     "title": "Chest discomfort after lunch in a 58-year-old man",
-    "heading": "CANDIDATE INFORMATION AND TASKS",
+    "heading": "YOUR INFORMATION AND TASKS",
     "candidate_information": [
       "You are working in a general practice clinic.",
       "Your next patient is David Nguyen, aged 58 years.",
@@ -12,9 +12,9 @@
     ],
     "tasks_heading": "YOUR TASKS ARE TO:",
     "tasks": [
-      "Take a concise, relevant and focused history.",
-      "Ask the examiner for any examination findings or observations you require.",
-      "Explain your likely concerns to the patient.",
+      "Take a concise and relevant history.",
+      "Ask the examiner for any vital signs (observations) and examination findings you need.",
+      "Explain your concerns to David.",
       "Discuss your management plan."
     ]
   },
@@ -28,72 +28,72 @@
   "reveal_actions": [
     {
       "id": "pain_story",
-      "label": "Pain story",
+      "label": "Pain questions",
       "speaker": "David",
       "interaction_role": "patient_response",
-      "candidate_request_prompt": "Ask David about onset, activity, site, character, severity, radiation, and whether the pain is settling.",
+      "candidate_request_prompt": "Ask when the pain started, what David was doing, where it is, what it feels like, how severe it is, where it spreads, and whether it is easing.",
       "learner_delivery": "ask_then_listen",
       "response_text": "It started about 45 minutes ago while I was carrying boxes. It is in the centre of my chest, heavy and tight, about 8 out of 10. It goes into my left arm and jaw, and it is not settling.",
       "unlock_source": "station_started"
     },
     {
       "id": "associated_symptoms",
-      "label": "Associated symptoms",
+      "label": "Other symptoms",
       "speaker": "David",
       "interaction_role": "patient_response",
-      "candidate_request_prompt": "Ask David about sweating, nausea, breathlessness, dizziness, and collapse.",
+      "candidate_request_prompt": "Ask whether David feels sweaty, sick, short of breath, dizzy, or faint.",
       "learner_delivery": "ask_then_listen",
       "response_text": "I feel sweaty and sick, and I am a bit short of breath. It is starting to scare me.",
       "unlock_source": "station_started"
     },
     {
       "id": "risk_factors",
-      "label": "Risk factors and background",
+      "label": "Heart risk factors",
       "speaker": "David",
       "interaction_role": "patient_response",
-      "candidate_request_prompt": "After urgent transfer is underway, ask David for the focused cardiovascular background that changes risk.",
+      "candidate_request_prompt": "After calling the ambulance, ask about smoking, diabetes, high blood pressure, high cholesterol, and close family history of heart disease.",
       "learner_delivery": "ask_then_listen",
-      "response_text": "I smoke. I have high blood pressure and high cholesterol. My father had a heart attack.",
+      "response_text": "I smoke. I have high blood pressure and high cholesterol, but not diabetes. My father had a heart attack.",
       "unlock_source": "station_started"
     },
     {
       "id": "ideas_concerns",
-      "label": "Ideas and concerns",
+      "label": "David's thoughts and worries",
       "speaker": "David",
       "interaction_role": "patient_response",
-      "candidate_request_prompt": "Ask David what he thinks is happening and what is worrying him.",
+      "candidate_request_prompt": "Ask David what he thinks is happening and what worries him most.",
       "learner_delivery": "ask_then_listen",
       "response_text": "I thought it was indigestion because it started after lunch. I am worried about missing work.",
       "unlock_source": "station_started"
     },
     {
       "id": "observations_examination",
-      "label": "Ask examiner for observations and examination",
+      "label": "Vital signs and examination",
       "speaker": "Examiner",
       "interaction_role": "examiner_response",
       "request_role": "candidate_to_examiner",
-      "candidate_request_prompt": "Ask the examiner for David's general appearance, immediate observations, and focused cardiovascular and respiratory examination findings.",
+      "candidate_request_prompt": "Ask the examiner for David's general appearance, vital signs, and relevant cardiovascular and respiratory examination findings.",
       "learner_delivery": "request_then_listen",
-      "response_text": "David looks pale and sweaty. Heart rate 104, blood pressure 155/92, respiratory rate 22, oxygen saturation 95% on room air, temperature 36.8, pain 8/10. His chest is clear. There is no new murmur and no calf swelling.",
+      "response_text": "David looks pale and sweaty.\nVital signs: heart rate 104, blood pressure 155/92, respiratory rate 22, oxygen saturation 95% on room air, temperature 36.8°C, and pain 8/10.\nHis chest is clear. There is no new murmur or calf swelling.",
       "unlock_source": "station_started"
     },
     {
       "id": "investigation_availability",
-      "label": "Ask examiner about available investigations",
+      "label": "Available tests",
       "speaker": "Examiner",
       "interaction_role": "examiner_response",
       "request_role": "candidate_to_examiner",
-      "candidate_request_prompt": "Ask the examiner whether an ECG and troponin result are available in this consultation.",
+      "candidate_request_prompt": "Ask the examiner whether an ECG is available and whether a troponin result is available during this consultation.",
       "learner_delivery": "request_then_listen",
       "response_text": "A 12-lead ECG can be performed in the clinic. A troponin result is not available within this consultation.",
       "unlock_source": "station_started"
     },
     {
       "id": "response_to_plan",
-      "label": "Response to your plan",
+      "label": "Hear David's response",
       "speaker": "David",
       "interaction_role": "patient_response",
-      "candidate_request_prompt": "Explain your concern and management plan to David, then listen to his response.",
+      "candidate_request_prompt": "Explain your concern and urgent plan to David. Then listen to his response.",
       "learner_delivery": "explain_then_listen",
       "response_text": "An ambulance? Can I just drive myself? Is it really that serious?",
       "unlock_source": "plan_discussed"
@@ -103,9 +103,17 @@
     "id": "plan_discussed",
     "label": "I have discussed my plan.",
     "interaction_role": "candidate_to_patient",
-    "candidate_prompt": "Explain your concern and urgent plan aloud before using this gate.",
+    "candidate_prompt": "Explain your concern and urgent plan aloud. Then use this button.",
     "sets_state": "plan_discussed",
     "is_scoring": false
+  },
+  "completion_evidence": {
+    "required_reveals": [
+      {"id": "pain_story", "label": "Pain questions asked"},
+      {"id": "associated_symptoms", "label": "Warning symptoms checked"},
+      {"id": "observations_examination", "label": "Vital signs and examination findings requested"},
+      {"id": "response_to_plan", "label": "David's concern about the ambulance answered"}
+    ]
   },
   "finish_action": {
     "id": "finish_station",
