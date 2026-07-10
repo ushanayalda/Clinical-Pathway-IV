@@ -1,0 +1,26 @@
+{
+  "phases": [
+    {
+      "phase_id": "phase-1",
+      "label": "Phase 1",
+      "confidence_target": "I can keep the patient safe before I have full certainty.",
+      "patterns": [
+        {
+          "pattern_id": "dangerous-chest-pain",
+          "label": "Dangerous chest pain",
+          "training_job": "Recognise danger, act early, and explain the safe next step.",
+          "stations": [
+            {
+              "case_id": "CP-C001",
+              "number": "001",
+              "title": "Chest discomfort after lunch",
+              "station_type": "Patient consultation",
+              "status": "ready_for_prototype_practice",
+              "recommended_action": "Learn the road, then practise it blind."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

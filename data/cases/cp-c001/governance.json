@@ -1,0 +1,24 @@
+{
+  "case_id": "CP-C001",
+  "prototype_status": "draft_for_human_review",
+  "source_status": "hold",
+  "schema_status": "hold",
+  "renderer_status": "hold",
+  "clinical_status": "hold",
+  "accessibility_status": "hold",
+  "audio_manifest_status": "hold",
+  "audio_generation_status": "hold",
+  "listen_test_status": "hold",
+  "audio_release_status": "hold",
+  "release_status": "hold",
+  "medication_management_status": "hold",
+  "last_human_reviewer": null,
+  "release_approver": null,
+  "release_date": null,
+  "blocked_actions": [
+    "clinical_release",
+    "audio_generation",
+    "case_002_generation",
+    "deployment"
+  ]
+}
