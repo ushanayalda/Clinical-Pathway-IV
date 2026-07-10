@@ -3,20 +3,20 @@
     {
       "phase_id": "phase-1",
       "label": "Phase 1",
-      "confidence_target": "I can keep the patient safe before I have full certainty.",
+      "confidence_target": "I can recognise danger and act before I know exactly what is causing it.",
       "patterns": [
         {
           "pattern_id": "dangerous-chest-pain",
           "label": "Dangerous chest pain",
-          "training_job": "Recognise danger, act early, and explain the safe next step.",
+          "training_job": "Recognise danger, arrange urgent help, and explain the plan clearly.",
           "stations": [
             {
               "case_id": "CP-C001",
               "number": "001",
               "title": "Chest discomfort after lunch",
               "station_type": "Patient consultation",
-              "status": "ready_for_prototype_practice",
-              "recommended_action": "Learn the road, then practise it blind."
+              "status": "ready_to_practise",
+              "recommended_action": "Learn from the Actual Run, then practise without prompts."
             }
           ]
         }

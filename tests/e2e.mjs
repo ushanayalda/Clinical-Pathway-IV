@@ -52,14 +52,20 @@ async function bodyText(page) {
 
 async function assertLearnerLanguage(page) {
   const text = await bodyText(page);
-  assert(!/\bAMC\b|\bADHD\b|\bCandidate\b|\bDr\./.test(text), "Learner UI leaked internal branding, labels, or title style");
+  assert(!/\bAMC\b|\bADHD\b|\bcandidate\b|\bDr\./i.test(text), "Learner UI leaked internal branding, labels, or title style");
   assert(!/\b(badge|XP|streak|confetti|leaderboard|trophy)\b/i.test(text), "Learner UI contains gamification");
+}
+
+async function assertPlainLanguage(page) {
+  const text = await bodyText(page);
+  const banned = /\b(certainty|prototype|retrieval|spacing)\b|clinic proof|Safety Mirror|strict mirror|weak turn|patient pushback|objective (?:attempt )?evidence|continuous rehearsal|portable station spine|heart danger|safe direction|safety action|Where did your run sit|After lunch becomes indigestion|examiner-facing/i;
+  assert(!banned.test(text), `Learner UI contains robotic or academic wording: ${text.match(banned)?.[0]}`);
 }
 
 async function openBlindReading(page) {
   await page.getByRole("button", { name: "Library", exact: true }).click();
   await page.waitForSelector("#library-title");
-  await page.getByRole("button", { name: "Practise blind" }).click();
+  await page.getByRole("button", { name: "Practise without prompts" }).click();
   await page.waitForSelector("#reading-title");
 }
 
@@ -87,7 +93,7 @@ async function revealAllPrePlanActions(page) {
 async function openPushbackAndFinish(page, { revealAll = true } = {}) {
   if (revealAll) await revealAllPrePlanActions(page);
   await page.getByRole("button", { name: "I have discussed my plan." }).click();
-  await page.getByRole("button", { name: "Response to your plan" }).click();
+  await page.getByRole("button", { name: "Hear David's response" }).click();
   const finish = page.getByRole("button", { name: "Finish station" });
   await finish.waitFor({ state: "visible" });
   assert(!(await finish.isDisabled()), "Finish remained disabled after patient pushback was opened");
@@ -113,11 +119,11 @@ async function currentReviewStage(page) {
 }
 
 async function exhaustSafeVersion(page) {
-  const start = page.getByRole("button", { name: "Start continuous rehearsal" });
+  const start = page.getByRole("button", { name: "Start full spoken practice" });
   if (await start.count()) await start.click();
-  const finish = page.getByRole("button", { name: "Finish continuous rehearsal" });
+  const finish = page.getByRole("button", { name: "Finish full spoken practice" });
   if (await finish.count()) await finish.click();
-  const nextTurn = page.getByRole("button", { name: "Next mapped turn" });
+  const nextTurn = page.getByRole("button", { name: "Next part" });
   let guard = 0;
   while (await nextTurn.count()) {
     await nextTurn.click();
@@ -151,13 +157,15 @@ async function prepareCurrentReviewStage(page, stageNumber) {
     }
   }
   if (stageNumber === 7) {
-    await page.getByRole("button", { name: /Explain the danger/ }).click();
+    await page.getByRole("button", { name: /Explain why it is urgent/ }).click();
   }
 }
 
 async function advanceReviewTo(page, targetStage) {
   let stage = await currentReviewStage(page);
   while (stage < targetStage) {
+    await assertLearnerLanguage(page);
+    await assertPlainLanguage(page);
     await prepareCurrentReviewStage(page, stage);
     const next = page.locator('[data-action="review-next"]');
     assert(await next.count(), `Review Stage ${stage} has no Next stage control`);
@@ -165,6 +173,8 @@ async function advanceReviewTo(page, targetStage) {
     await next.click();
     stage = await currentReviewStage(page);
   }
+  await assertLearnerLanguage(page);
+  await assertPlainLanguage(page);
 }
 
 async function completeReview(page) {
@@ -190,32 +200,33 @@ async function runDesktopBoundary(browser) {
   try {
     await clearState(page);
     await assertLearnerLanguage(page);
+    await assertPlainLanguage(page);
     assert(reviewRequests.length === 0, "Review data loaded on Home");
     await page.screenshot({ path: "artifacts/screenshots/01-home-desktop.png", fullPage: true });
 
     await page.getByRole("button", { name: "Library", exact: true }).click();
     await page.waitForSelector("#library-title");
     await page.screenshot({ path: "artifacts/screenshots/02-library-desktop.png", fullPage: true });
-    await page.getByRole("button", { name: "Practise blind" }).click();
+    await page.getByRole("button", { name: "Practise without prompts" }).click();
     await page.waitForSelector("#reading-title");
     let text = await bodyText(page);
     assert(!text.includes("Doctor, I think it is just indigestion"), "Patient opening leaked before Start");
-    assert(!text.includes("A complete spoken run"), "Gold Run leaked on reading screen");
+    assert(!text.includes("Actual Run: the whole station"), "Actual Run leaked on reading screen");
     assert(reviewRequests.length === 0, "Review data loaded before Blind Station Finish");
 
     await page.getByRole("button", { name: "Start station" }).click();
     await page.waitForSelector("#station-title");
     assert(await page.locator("#site-header").evaluate((element) => getComputedStyle(element).display === "none"), "Normal navigation stayed visible during live Station");
     text = await bodyText(page);
-    assert(!text.includes("Response to your plan"), "Patient pushback leaked before plan gate");
-    assert(!text.includes("A complete spoken run"), "Review teaching leaked into Blind Station");
+    assert(!text.includes("Hear David's response"), "David's response leaked before the plan gate");
+    assert(!text.includes("Actual Run: the whole station"), "Review teaching leaked into timed Station");
     await page.screenshot({ path: "artifacts/screenshots/03-station-desktop.png", fullPage: true });
 
     await revealAllPrePlanActions(page);
     await page.getByRole("button", { name: "I have discussed my plan." }).click();
     const prematureFinish = page.getByRole("button", { name: "Finish station" });
     assert(!(await prematureFinish.count()) || await prematureFinish.isDisabled(), "Station can finish before Response to your plan is opened");
-    await page.getByRole("button", { name: "Response to your plan" }).click();
+    await page.getByRole("button", { name: "Hear David's response" }).click();
     const finish = page.getByRole("button", { name: "Finish station" });
     assert(await finish.isVisible() && !(await finish.isDisabled()), "Opening patient pushback did not enable Finish station");
     await finish.click();
@@ -233,15 +244,17 @@ async function runRoleCorrectLearning(browser) {
   try {
     await clearState(page);
     await page.getByRole("button", { name: "Library", exact: true }).click();
-    await page.getByRole("button", { name: "Learn the road" }).click();
+    await page.getByRole("button", { name: "Learn from Actual Run" }).click();
     await page.waitForSelector("#learning-title");
 
     const runRoles = await page.locator(".actual-run-script .role-label").allInnerTexts();
     assert(runRoles.some((label) => /you say/i.test(label)), "Actual Run does not distinguish learner-spoken turns");
+    assert(runRoles.some((label) => /you hand over/i.test(label)), "Actual Run does not label the handover as learner-spoken");
     assert(runRoles.some((label) => /david says|patient responds/i.test(label)), "Actual Run does not distinguish patient responses");
-    assert(runRoles.some((label) => /clinical action|not spoken/i.test(label)), "Actual Run does not distinguish non-spoken actions");
+    assert(runRoles.some((label) => /action to take/i.test(label)), "Actual Run does not distinguish non-spoken actions");
     await assertLearnerLanguage(page);
-    await page.getByRole("button", { name: "Open the step map" }).click();
+    await assertPlainLanguage(page);
+    await page.getByRole("button", { name: "See it step by step" }).click();
 
     const instruction = page.locator(".learning-instruction");
     assert(await instruction.count(), "Learning mode has no role-correct .learning-instruction label");
@@ -254,13 +267,14 @@ async function runRoleCorrectLearning(browser) {
     assert(!/speak (this|the) line aloud|say (this|the) line aloud/i.test(patientInstruction), "Patient response incorrectly tells the learner to speak David's line");
 
     let guard = 0;
-    while (!/clinical action|not spoken/i.test(await page.locator(".role-label").innerText())) {
+    while (!/action to take/i.test(await page.locator(".role-label").innerText())) {
       await page.getByRole("button", { name: "Next step" }).click();
       guard += 1;
       assert(guard <= 20, "Learning mode never reached the non-spoken Action step");
     }
     assert(/not spoken|do not say|clinical action/i.test(await instruction.innerText()), "Action step is not clearly labelled as non-spoken");
     await assertLearnerLanguage(page);
+    await assertPlainLanguage(page);
     await page.evaluate(() => document.activeElement?.blur());
     await page.addStyleTag({ content: ".skip-link { display: none !important; }" });
     await page.screenshot({ path: "artifacts/screenshots/06-learning-desktop.png", fullPage: true });
@@ -275,7 +289,7 @@ async function runReviewCompletionIntegrity(browser) {
   try {
     await clearState(page);
     await finishObjectiveAttempt(page);
-    const confidenceTab = page.getByRole("button", { name: "8. Confidence" });
+    const confidenceTab = page.getByRole("button", { name: "8. Ready now?" });
     if (!(await confidenceTab.isDisabled())) await confidenceTab.click();
     const confidence = page.locator('[data-action="confidence-choice"][data-confidence="4"]');
     if (await confidence.count() && !(await confidence.isDisabled())) await confidence.click();
@@ -319,7 +333,7 @@ async function runAttemptEvidenceAndHistory(browser) {
     if (await evidenceSummary.count() && await evidence.getAttribute("open") === null) await evidenceSummary.click();
     const evidenceText = await evidence.innerText();
     assert(/7\s*(of|\/)\s*7|7 responses/i.test(evidenceText), "Attempt evidence does not report revealed-response coverage");
-    assert(/(plan response|patient pushback).*opened|opened.*(plan response|patient pushback)/i.test(evidenceText), "Attempt evidence does not confirm that patient pushback was opened");
+    assert(/David\'s concern\s*opened/i.test(evidenceText), "Attempt checklist does not confirm that David\'s concern was opened");
     assert(/duration|time used|elapsed/i.test(evidenceText), "Attempt evidence does not report objective duration");
 
     const beforeReview = await savedState(page);
@@ -343,7 +357,7 @@ async function runAttemptEvidenceAndHistory(browser) {
 
     await page.locator('[data-action="start-guided"]').click();
     await page.locator('[data-action="complete-guided"]').click();
-    await page.getByRole("button", { name: "Try Blind Station" }).click();
+    await page.getByRole("button", { name: "Start timed station" }).click();
     const afterReset = await savedState(page);
     const afterHistory = afterReset.attempt_history ?? afterReset.attempts ?? [];
     assert(afterHistory.length === beforeHistory.length, "Starting a retry erased or duplicated prior attempt history");
@@ -398,13 +412,20 @@ async function runMobileAccessibility(browser) {
     await startBlindStation(page);
     await page.waitForTimeout(180);
 
+    const statusVisibility = await page.locator(".status-message-inline").evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return { width: rect.width, height: rect.height, opacity: Number(style.opacity) };
+    });
+    assert(statusVisibility.width > 100 && statusVisibility.height > 20 && statusVisibility.opacity === 1, "Mobile status message is not visually readable");
+
     const layout = await page.evaluate(() => ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth }));
     assert(layout.scrollWidth <= layout.width, `Mobile has horizontal overflow: ${layout.scrollWidth} > ${layout.width}`);
     const smallTargets = await page.locator("button:visible").evaluateAll((buttons) => buttons.filter((button) => button.getBoundingClientRect().height < 44).map((button) => button.innerText));
     assert(smallTargets.length === 0, `Mobile tap targets below 44px: ${smallTargets.join(", ")}`);
 
     const obstruction = await page.evaluate(() => {
-      const toast = document.querySelector(".status-message.is-visible");
+      const toast = document.querySelector(".status-message-inline");
       if (!toast) return [];
       const toastRect = toast.getBoundingClientRect();
       return [...document.querySelectorAll("button")]
@@ -418,7 +439,14 @@ async function runMobileAccessibility(browser) {
     });
     assert(obstruction.length === 0, `Mobile status message obstructs controls: ${obstruction.join(", ")}`);
 
-    const pain = page.getByRole("button", { name: "Pain story" });
+    const planBeforeQuestions = await page.evaluate(() => {
+      const plan = document.querySelector(".plan-gate");
+      const questions = document.querySelector(".ask-panel");
+      return Boolean(plan && questions && (plan.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    assert(planBeforeQuestions, "Urgent-plan control still appears after every history control");
+
+    const pain = page.getByRole("button", { name: "Pain questions" });
     await page.screenshot({ path: "artifacts/screenshots/07-station-mobile.png", fullPage: false });
     await pain.focus();
     await page.keyboard.press("Enter");
@@ -435,7 +463,7 @@ async function runMobileAccessibility(browser) {
 
     await revealAllPrePlanActions(page);
     await page.getByRole("button", { name: "I have discussed my plan." }).click();
-    await page.getByRole("button", { name: "Response to your plan" }).click();
+    await page.getByRole("button", { name: "Hear David's response" }).click();
     await page.getByRole("button", { name: "Finish station" }).click();
     await page.waitForSelector("#review-title");
     await advanceReviewTo(page, 5);
@@ -460,6 +488,7 @@ async function runMobileAccessibility(browser) {
 
     await page.screenshot({ path: "artifacts/screenshots/08-review-mobile.png", fullPage: false });
     await assertLearnerLanguage(page);
+    await assertPlainLanguage(page);
   } finally {
     await page.close();
   }
